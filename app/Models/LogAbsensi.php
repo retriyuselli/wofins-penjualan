@@ -2,11 +2,9 @@
 
 namespace App\Models;
 
-use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\URL;
 
 class LogAbsensi extends Model
 {
@@ -60,32 +58,6 @@ class LogAbsensi extends Model
     public function lokasiAbsensi(): BelongsTo
     {
         return $this->belongsTo(LokasiAbsensi::class);
-    }
-
-    public function urlFoto(): ?string
-    {
-        if (! $this->path_foto || ! $this->fotoDisk()) {
-            return null;
-        }
-
-        return URL::temporarySignedRoute(
-            'absensi.logs.foto',
-            now()->addMinutes(60),
-            ['logAbsensi' => $this->getKey()]
-        );
-    }
-
-    public function temporaryFotoUrl(?CarbonInterface $expiresAt = null): ?string
-    {
-        if (! $this->path_foto || ! $this->fotoDisk()) {
-            return null;
-        }
-
-        return URL::temporarySignedRoute(
-            'absensi.logs.foto',
-            $expiresAt ?? now()->addMinutes(60),
-            ['logAbsensi' => $this->getKey()]
-        );
     }
 
     public function fotoDisk(): ?string

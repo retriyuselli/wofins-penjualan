@@ -1,8 +1,6 @@
 <?php
 
 use App\Http\Controllers\AccountManagerReportController;
-use App\Http\Controllers\AbsensiLaporanController;
-use App\Http\Controllers\AbsensiPhotoController;
 use App\Http\Controllers\BankReconciliationTemplateController;
 use App\Http\Controllers\BankStatementFileController;
 use App\Http\Controllers\NotaDinasInvoiceFileController;
@@ -24,8 +22,6 @@ use App\Http\Controllers\LaporanKeuanganController;
 use App\Http\Controllers\NotaDinasPdfController;
 use App\Http\Controllers\PayrollSlipController;
 use App\Http\Controllers\ProductDisplayController;
-use App\Http\Controllers\Absen\HomeController as AbsenHomeController;
-use App\Http\Controllers\Profile\AbsensiController as ProfileAbsensiController;
 use App\Http\Controllers\Profile\ProfileController;
 use App\Http\Controllers\Profile\AdminToolsController;
 use App\Http\Controllers\ProspectAppController;
@@ -205,20 +201,7 @@ Route::middleware($authNoStore)->group(function () {
     Route::get('/bank-statements/{bankStatement}/reconciliation/download', [BankStatementFileController::class, 'downloadReconciliation'])
         ->name('bank-statements.reconciliation.download')
         ->middleware('throttle:60,1');
-
-    Route::get('/absensi/laporan/excel', [AbsensiLaporanController::class, 'excel'])
-        ->name('absensi.laporan.excel')
-        ->middleware('throttle:30,1');
-    Route::get('/absensi/laporan/pdf', [AbsensiLaporanController::class, 'pdf'])
-        ->name('absensi.laporan.pdf')
-        ->middleware('throttle:30,1');
 });
-
-// Foto absensi: private disk via temporary signed URL (tanpa session —
-// <img> Filament tidak selalu mengirim cookie auth dengan andal).
-Route::get('/absensi/logs/{logAbsensi}/foto', [AbsensiPhotoController::class, 'show'])
-    ->name('absensi.logs.foto')
-    ->middleware(['signed', 'throttle:60,1']);
 
 // WIDGET ROUTE
 // Widget yang langsung link ke processing
@@ -329,37 +312,6 @@ Route::middleware($authNoStore)->group(function () {
     Route::get('/profile', [ProfileController::class, 'overview'])->name('profile');
     Route::get('/profile/show', [ProfileController::class, 'overview'])->name('profile.show');
     Route::get('/profile/overview', [ProfileController::class, 'overview'])->name('profile.overview');
-    Route::get('/profile/absensi', [ProfileAbsensiController::class, 'index'])
-        ->name('profile.absensi')
-        ->middleware('absensi.headers');
-    Route::post('/profile/absensi/masuk', [ProfileAbsensiController::class, 'masuk'])
-        ->name('profile.absensi.masuk')
-        ->middleware('absensi.headers')
-        ->middleware('throttle:20,1');
-    Route::post('/profile/absensi/pulang', [ProfileAbsensiController::class, 'pulang'])
-        ->name('profile.absensi.pulang')
-        ->middleware('absensi.headers')
-        ->middleware('throttle:20,1');
-    Route::post('/profile/absensi/koreksi', [ProfileAbsensiController::class, 'koreksi'])
-        ->name('profile.absensi.koreksi')
-        ->middleware('absensi.headers')
-        ->middleware('throttle:10,1');
-    Route::post('/profile/absensi/lembur', [ProfileAbsensiController::class, 'lembur'])
-        ->name('profile.absensi.lembur')
-        ->middleware('absensi.headers')
-        ->middleware('throttle:10,1');
-    Route::get('/profile/absensi/laporan/excel', [ProfileAbsensiController::class, 'laporanExcel'])
-        ->name('profile.absensi.laporan.excel')
-        ->middleware('throttle:20,1');
-    Route::get('/profile/absensi/laporan/pdf', [ProfileAbsensiController::class, 'laporanPdf'])
-        ->name('profile.absensi.laporan.pdf')
-        ->middleware('throttle:20,1');
-
-    Route::get('/absen', [AbsenHomeController::class, 'home'])->name('absen.home');
-    Route::get('/absen/lainnya', [AbsenHomeController::class, 'more'])->name('absen.more');
-    Route::get('/absen/{aksi}', [AbsenHomeController::class, 'clock'])
-        ->name('absen.clock')
-        ->where('aksi', 'masuk|pulang');
     Route::get('/profile/compensation', [ProfileController::class, 'compensation'])->name('profile.compensation');
     Route::get('/profile/schedule', [ProfileController::class, 'schedule'])->name('profile.schedule');
     Route::get('/profile/laporan-keuangan', [ProfileController::class, 'financialReport'])

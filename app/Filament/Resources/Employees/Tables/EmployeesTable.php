@@ -160,11 +160,13 @@ class EmployeesTable
             ->striped()
             ->defaultPaginationPageOption(10)
             ->paginationPageOptions([10, 25, 50])
-            ->emptyStateDescription('Silakan buat data pribadi baru untuk memulai.')
+            ->emptyStateIcon('heroicon-o-user')
+            ->emptyStateHeading('Belum ada karyawan')
+            ->emptyStateDescription('Tambah data karyawan untuk proyek, cuti, dan payroll.')
             ->emptyStateActions([
                 Action::make('create')
-                    ->label('Buat Data Pribadi Baru')
-                    ->url(fn () => route('filament.admin.resources.data-pribadis.create'))
+                    ->label('Tambah Karyawan')
+                    ->url(fn () => route('filament.admin.resources.employees.create'))
                     ->icon('heroicon-o-plus')
                     ->button(),
             ]);

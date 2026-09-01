@@ -45,14 +45,13 @@ class UsersTable
         return $record->roles->contains('name', 'super_admin');
     }
 
-    private static function avatarUrl(User $record): string
+    private static function placeholderAvatarUrl(User $record): string
     {
         $initials = collect(explode(' ', $record->name ?? 'U'))
             ->map(fn ($word) => strtoupper(substr($word, 0, 1)))
             ->take(2)
             ->implode('');
 
-        // Selalu pakai ui-avatars di list — hindari /storage/* lewat php artisan serve (~0.5–1s/file)
         return 'https://ui-avatars.com/api/?name='.urlencode($initials ?: 'U').'&background=3b82f6&color=ffffff&size=64&font-size=0.33';
     }
 
@@ -62,9 +61,12 @@ class UsersTable
             ->columns([
                 ImageColumn::make('avatar_url')
                     ->label('Foto')
-                    ->getStateUsing(fn (User $record): string => static::avatarUrl($record))
+                    ->disk('public')
+                    ->visibility('public')
+                    ->checkFileExistence()
+                    ->defaultImageUrl(fn (User $record): string => static::placeholderAvatarUrl($record))
                     ->circular()
-                    ->size(36)
+                    ->size(40)
                     ->extraImgAttributes(['loading' => 'lazy', 'decoding' => 'async']),
 
                 TextColumn::make('name')

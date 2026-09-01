@@ -31,6 +31,8 @@ class EmployeeResource extends Resource
 
     protected static ?string $navigationLabel = 'Karyawan';
 
+    protected static ?string $modelLabel = 'Karyawan';
+
     public static function form(Schema $schema): Schema
     {
         return EmployeeForm::configure($schema);

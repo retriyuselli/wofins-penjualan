@@ -2,16 +2,21 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
 class Employee extends Model
 {
     use LogsActivity;
+    use SoftDeletes;
 
     protected $fillable = [
         'name',
@@ -33,6 +38,26 @@ class Employee extends Model
         'note',
     ];
 
+    protected static function booted(): void
+    {
+        static::creating(function (Employee $employee): void {
+            $base = filled($employee->slug)
+                ? (string) $employee->slug
+                : (string) ($employee->name ?: 'karyawan');
+            $employee->slug = static::generateUniqueSlug($base);
+        });
+
+        static::updating(function (Employee $employee): void {
+            if (! $employee->isDirty('slug') && ! $employee->isDirty('name')) {
+                return;
+            }
+
+            $base = filled($employee->slug)
+                ? (string) $employee->slug
+                : (string) ($employee->name ?: 'karyawan');
+            $employee->slug = static::generateUniqueSlug($base, (int) $employee->id);
+        });
+    }
 
     public function getActivitylogOptions(): LogOptions
     {
@@ -65,6 +90,45 @@ class Employee extends Model
     public function dataPribadi(): HasOne
     {
         return $this->hasOne(DataPribadi::class, 'email', 'email');
+    }
+
+    public static function generateUniqueSlug(string $name, ?int $ignoreId = null): string
+    {
+        $base = Str::slug($name) ?: 'karyawan';
+        $slug = $base;
+        $counter = 1;
+
+        while (
+            static::withTrashed()
+                ->when($ignoreId, fn (Builder $q) => $q->whereKeyNot($ignoreId))
+                ->where('slug', $slug)
+                ->exists()
+        ) {
+            $slug = $base.'-'.$counter;
+            $counter++;
+        }
+
+        return $slug;
+    }
+
+    /**
+     * Cari karyawan dengan nama sama (case-insensitive) — untuk peringatan, bukan blokir.
+     *
+     * @return Collection<int, Employee>
+     */
+    public static function findSameName(string $name, ?int $ignoreId = null): Collection
+    {
+        $name = trim($name);
+        if ($name === '') {
+            return collect();
+        }
+
+        return static::query()
+            ->when($ignoreId, fn (Builder $q) => $q->whereKeyNot($ignoreId))
+            ->whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower($name)])
+            ->orderBy('id')
+            ->limit(5)
+            ->get(['id', 'name', 'email', 'position']);
     }
 
     public function getEmCountAttribute()

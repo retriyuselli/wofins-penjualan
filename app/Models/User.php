@@ -237,11 +237,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
 
     public function getFilamentAvatarUrl(): ?string
     {
-        if ($this->avatar_url) {
-            return Storage::url($this->avatar_url);
-        }
-
-        return null;
+        return $this->resolvedAvatarUrl();
     }
 
     /**
@@ -249,11 +245,20 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
      */
     public function getAvatarAttribute(): ?string
     {
-        if ($this->avatar_url) {
-            return Storage::url($this->avatar_url);
+        return $this->resolvedAvatarUrl();
+    }
+
+    public function resolvedAvatarUrl(): ?string
+    {
+        if (! filled($this->avatar_url)) {
+            return null;
         }
 
-        return null;
+        if (! Storage::disk('public')->exists($this->avatar_url)) {
+            return null;
+        }
+
+        return Storage::disk('public')->url($this->avatar_url);
     }
 
     public function orders(): HasMany
