@@ -115,7 +115,6 @@
                 $isAdminUsers = request()->routeIs('profile.admin-tools.users');
                 $isAdminRoles = request()->routeIs('profile.admin-tools.roles');
                 $isAdminCompany = request()->routeIs('profile.admin-tools.company');
-                $isAdminBranding = request()->routeIs('profile.admin-tools.branding');
                 $isAdminSops = request()->routeIs('profile.admin-tools.sops');
                 $isAdminDocumentations = request()->routeIs('profile.admin-tools.documentations');
                 $isAdminDocumentCategories = request()->routeIs('profile.admin-tools.document-categories');
@@ -156,14 +155,6 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21h18M4 21V7a2 2 0 012-2h3V3h6v2h3a2 2 0 012 2v14M9 21v-6h6v6" />
                     </svg>
                     <span>Pengaturan Perusahaan</span>
-                </a>
-
-                <a href="{{ route('profile.admin-tools.branding') }}"
-                    class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition {{ $isAdminBranding ? 'font-semibold text-[#0b1f3a] bg-[rgba(201,162,39,0.16)]' : 'text-gray-700 hover:bg-gray-50' }}">
-                    <svg class="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4-4a3 3 0 014 0l1 1a3 3 0 004 0l3-3M4 6h16v12H4V6z" />
-                    </svg>
-                    <span>Logo & Branding</span>
                 </a>
 
                 <a href="{{ route('profile.admin-tools.sops') }}"

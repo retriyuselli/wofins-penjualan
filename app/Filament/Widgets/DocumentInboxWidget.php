@@ -20,6 +20,8 @@ class DocumentInboxWidget extends BaseWidget
 
     protected int|string|array $columnSpan = 'full';
 
+    protected static bool $isLazy = false;
+
     protected static ?string $heading = 'Inbox Dokumen';
 
     protected static ?int $sort = 3;

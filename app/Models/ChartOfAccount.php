@@ -72,11 +72,6 @@ class ChartOfAccount extends Model
         return $this->hasMany(ChartOfAccount::class, 'parent_id');
     }
 
-    // public function journalEntries(): HasMany
-    // {
-    //     return $this->hasMany(JournalEntry::class, 'account_id');
-    // }
-
     // Scopes
     public function scopeActive($query)
     {
@@ -106,25 +101,9 @@ class ChartOfAccount extends Model
 
     public function getBalance($startDate = null, $endDate = null): float
     {
-        $query = $this->journalEntries();
+        unset($startDate, $endDate);
 
-        if ($startDate) {
-            $query->where('transaction_date', '>=', $startDate);
-        }
-
-        if ($endDate) {
-            $query->where('transaction_date', '<=', $endDate);
-        }
-
-        $debits = $query->sum('debit_amount');
-        $credits = $query->sum('credit_amount');
-
-        // Return balance based on normal balance
-        if ($this->normal_balance === 'debit') {
-            return $debits - $credits;
-        } else {
-            return $credits - $debits;
-        }
+        return 0.0;
     }
 
     public function hasChildren(): bool

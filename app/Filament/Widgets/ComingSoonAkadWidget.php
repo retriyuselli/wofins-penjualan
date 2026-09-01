@@ -20,6 +20,8 @@ class ComingSoonAkadWidget extends BaseWidget
 
     protected static ?int $sort = 40;
 
+    protected static bool $isLazy = false;
+
     public function table(Table $table): Table
     {
         return $table

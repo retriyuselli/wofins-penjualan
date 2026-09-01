@@ -3,8 +3,6 @@
 namespace App\Filament\Resources\Expenses\Tables;
 
 use App\Models\Expense;
-use App\Models\JournalBatch;
-use App\Services\OrderJournalService;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkAction;
@@ -106,64 +104,7 @@ class ExpensesTable
             ->recordActions([
                 ActionGroup::make([
                     ViewAction::make(),
-                    Action::make('void_expense')
-                        ->label('Batalkan (Void)')
-                        ->icon('heroicon-o-arrow-uturn-left')
-                        ->color('danger')
-                        ->requiresConfirmation()
-                        ->modalHeading('Batalkan Expense')
-                        ->modalDescription('Tindakan ini akan membuat jurnal reversal dan menghapus (soft delete) expense agar angka operasional kembali benar.')
-                        ->modalSubmitActionLabel('Ya, Batalkan')
-                        ->form([
-                            Textarea::make('reason')
-                                ->label('Alasan')
-                                ->required()
-                                ->maxLength(500),
-                        ])
-                        ->action(function (Expense $record, array $data): void {
-                            Gate::authorize('update', $record);
-
-                            $ok = app(OrderJournalService::class)->reverseJournal('expense', $record->id, $data['reason']);
-
-                            if (! $ok) {
-                                Notification::make()
-                                    ->danger()
-                                    ->title('Pembatalan gagal')
-                                    ->body('Jurnal expense tidak ditemukan atau tidak bisa dibatalkan.')
-                                    ->send();
-
-                                return;
-                            }
-
-                            $record->delete();
-
-                            Notification::make()
-                                ->success()
-                                ->title('Expense dibatalkan')
-                                ->body('Jurnal reversal dibuat dan expense dihapus (soft delete).')
-                                ->send();
-                        })
-                        ->visible(function (Expense $record): bool {
-                            if ($record->trashed()) {
-                                return false;
-                            }
-
-                            return JournalBatch::where('reference_type', 'expense')
-                                ->where('reference_id', $record->id)
-                                ->where('status', 'posted')
-                                ->exists();
-                        }),
-                    DeleteAction::make()
-                        ->visible(function (Expense $record): bool {
-                            if ($record->trashed()) {
-                                return false;
-                            }
-
-                            return ! JournalBatch::where('reference_type', 'expense')
-                                ->where('reference_id', $record->id)
-                                ->where('status', 'posted')
-                                ->exists();
-                        }),
+                    DeleteAction::make(),
                 ]),
             ])
             ->toolbarActions([

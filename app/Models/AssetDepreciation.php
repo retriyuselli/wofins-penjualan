@@ -21,7 +21,6 @@ class AssetDepreciation extends Model
         'accumulated_depreciation_after',
         'book_value_before',
         'book_value_after',
-        'journal_batch_id',
         'notes',
         'is_adjustment',
     ];
@@ -49,18 +48,6 @@ class AssetDepreciation extends Model
     public function fixedAsset(): BelongsTo
     {
         return $this->belongsTo(FixedAsset::class);
-    }
-
-    public function journalBatch(): BelongsTo
-    {
-        return $this->belongsTo(JournalBatch::class);
-    }
-
-    // Methods
-    public function createJournalEntry(): void
-    {
-        // This will be implemented when we create the double-entry system
-        // For now, just placeholder
     }
 
     // Scopes

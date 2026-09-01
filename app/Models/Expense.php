@@ -168,13 +168,4 @@ class Expense extends Model
     {
         return $this->belongsTo(NotaDinasDetail::class);
     }
-
-    /**
-     * Get the journal batches for this expense.
-     */
-    public function journalBatches()
-    {
-        return $this->hasMany(JournalBatch::class, 'reference_id')
-            ->whereIn('reference_type', ['expense', 'expense_reversal']);
-    }
 }

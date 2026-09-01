@@ -6,7 +6,6 @@ use App\Http\Controllers\AbsensiPhotoController;
 use App\Http\Controllers\BankReconciliationTemplateController;
 use App\Http\Controllers\BankStatementFileController;
 use App\Http\Controllers\NotaDinasInvoiceFileController;
-use App\Http\Controllers\BlogController;
 use App\Http\Controllers\BrandController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\Front\AsetFeatureController;
@@ -21,7 +20,6 @@ use App\Http\Controllers\Front\ProductCatalogController;
 use App\Http\Controllers\Front\RegistrationController;
 use App\Http\Controllers\FrontendDataPribadiController;
 use App\Http\Controllers\InvoiceOrderController;
-use App\Http\Controllers\JournalPdfController;
 use App\Http\Controllers\LaporanKeuanganController;
 use App\Http\Controllers\NotaDinasPdfController;
 use App\Http\Controllers\PayrollSlipController;
@@ -179,12 +177,6 @@ Route::get('/pendaftaran', [RegistrationController::class, 'pendaftaran'])->name
 // CONTACT
 Route::view('/kontak', 'front.kontak')->name('kontak');
 
-// BLOG
-Route::get('/blog', [BlogController::class, 'index'])->name('blog');
-Route::get('/blog/search', [BlogController::class, 'search'])->name('blog.search');
-Route::get('/blog/category/{category}', [BlogController::class, 'category'])->name('blog.category');
-Route::get('/blog/{slug}', [BlogController::class, 'show'])->name('blog.detail');
-
 // INVOICE
 Route::middleware($authNoStore)->group(function () {
     Route::get('/invoice/{order}', [InvoiceOrderController::class, 'show'])
@@ -212,12 +204,6 @@ Route::middleware($authNoStore)->group(function () {
         ->middleware('throttle:60,1');
     Route::get('/bank-statements/{bankStatement}/reconciliation/download', [BankStatementFileController::class, 'downloadReconciliation'])
         ->name('bank-statements.reconciliation.download')
-        ->middleware('throttle:60,1');
-
-    Route::get('/journal/pdf/preview', [JournalPdfController::class, 'preview'])
-        ->name('journal.pdf.preview');
-    Route::get('/journal/pdf/download', [JournalPdfController::class, 'download'])
-        ->name('journal.pdf.download')
         ->middleware('throttle:60,1');
 
     Route::get('/absensi/laporan/excel', [AbsensiLaporanController::class, 'excel'])
@@ -394,7 +380,6 @@ Route::middleware($authNoStore)->group(function () {
         Route::get('/users', [AdminToolsController::class, 'users'])->name('profile.admin-tools.users');
         Route::get('/roles', [AdminToolsController::class, 'roles'])->name('profile.admin-tools.roles');
         Route::get('/company', [AdminToolsController::class, 'company'])->name('profile.admin-tools.company');
-        Route::get('/branding', [AdminToolsController::class, 'branding'])->name('profile.admin-tools.branding');
         Route::get('/sops', [AdminToolsController::class, 'sops'])->name('profile.admin-tools.sops');
         Route::get('/documentations', [AdminToolsController::class, 'documentations'])->name('profile.admin-tools.documentations');
         Route::get('/document-categories', [AdminToolsController::class, 'documentCategories'])->name('profile.admin-tools.document-categories');

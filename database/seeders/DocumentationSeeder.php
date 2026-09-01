@@ -433,7 +433,7 @@ class DocumentationSeeder extends Seeder
 <p>Penyusutan besar di awal tahun, mengecil di tahun-tahun berikutnya. Cocok untuk kendaraan atau elektronik yang cepat turun harganya.</p>
 
 <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-    <strong>Penting:</strong> Penyusutan akan otomatis menjurnal beban penyusutan setiap akhir bulan jika fitur auto-journal diaktifkan.
+    <strong>Penting:</strong> Generate penyusutan dari halaman riwayat aset untuk mencatat beban penyusutan bulan berjalan.
 </div>
                 ',
                 'is_published' => true,
@@ -481,30 +481,6 @@ class DocumentationSeeder extends Seeder
                 'icon' => 'heroicon-o-banknotes',
                 'order' => 5,
                 'is_active' => true,
-            ]
-        );
-
-        Documentation::updateOrCreate(
-            ['slug' => 'memahami-bagan-akun'],
-            [
-                'documentation_category_id' => $financeCategory->id,
-                'title' => 'Memahami Bagan Akun (COA)',
-                'content' => '
-<h2>Struktur Bagan Akun (Chart of Accounts)</h2>
-<p>Bagan Akun adalah fondasi dari laporan keuangan sistem WOFINS.</p>
-<ul>
-    <li><strong>1-xxxx ASET</strong>: Kas, Bank, Piutang, Perlengkapan.</li>
-    <li><strong>2-xxxx KEWAJIBAN</strong>: Utang Vendor, Uang Muka Klien (Pendapatan Diterima Dimuka).</li>
-    <li><strong>3-xxxx EKUITAS</strong>: Modal Owner, Laba Ditahan.</li>
-    <li><strong>4-xxxx PENDAPATAN</strong>: Pendapatan Jasa WO, Pendapatan Dekorasi.</li>
-    <li><strong>5-xxxx BEBAN POKOK</strong>: Biaya Vendor (HPP Event).</li>
-    <li><strong>6-xxxx BEBAN OPERASIONAL</strong>: Gaji Tim, Listrik, Sewa Kantor.</li>
-</ul>
-                ',
-                'is_published' => true,
-                'keywords' => 'coa, akun, chart of accounts',
-                'related_resource' => 'ChartOfAccountResource',
-                'order' => 1,
             ]
         );
 
@@ -710,36 +686,6 @@ class DocumentationSeeder extends Seeder
                 'keywords' => 'sop, prosedur, standar, instruksi kerja',
                 'related_resource' => 'SopResource',
                 'order' => 3,
-            ]
-        );
-
-        Documentation::updateOrCreate(
-            ['slug' => 'manajemen-logo-mitra'],
-            [
-                'documentation_category_id' => $adminCategory->id,
-                'title' => 'Manajemen Logo Mitra/Perusahaan',
-                'content' => '
-<h2>Logo Mitra & Klien</h2>
-<p>Menu <strong>Logo Perusahaan</strong> digunakan untuk mengelola daftar logo partner, klien, atau media partner yang pernah bekerjasama.</p>
-
-<h3>Fungsi:</h3>
-<ul>
-    <li>Menampilkan logo-logo ini di halaman depan website (Landing Page) bagian "Trusted By" atau "Our Partners".</li>
-    <li>Sebagai database portofolio kerjasama.</li>
-</ul>
-
-<h3>Cara Upload:</h3>
-<ol>
-    <li>Masuk menu <strong>Logo Perusahaan</strong>.</li>
-    <li>Upload gambar logo (pastikan dimensi seragam agar rapi di website).</li>
-    <li>Isi Nama Mitra.</li>
-    <li>Aktifkan status "Active" agar tampil di website.</li>
-</ol>
-                ',
-                'is_published' => true,
-                'keywords' => 'logo, mitra, partner, website, frontend',
-                'related_resource' => 'CompanyLogoResource',
-                'order' => 4,
             ]
         );
 
@@ -955,28 +901,6 @@ class DocumentationSeeder extends Seeder
             ]
         );
 
-        Documentation::updateOrCreate(
-            ['slug' => 'jurnal-umum-manual'],
-            [
-                'documentation_category_id' => $financeCategory->id,
-                'title' => 'Jurnal Umum (General Journal)',
-                'content' => '
-<h2>Pencatatan Akuntansi Manual</h2>
-<p>Fitur <strong>Journal Batches</strong> digunakan oleh akuntan untuk mencatat transaksi yang tidak tercover oleh modul otomatis (seperti penyesuaian akhir bulan, koreksi kesalahan, atau depresiasi manual).</p>
-
-<h3>Cara Input Jurnal:</h3>
-<ol>
-    <li>Buat Batch Baru (misal: "Penyesuaian Jan 2024").</li>
-    <li>Tambah Item Jurnal (Debit & Kredit).</li>
-    <li>Pastikan Total Debit = Total Kredit (Balance).</li>
-    <li>Post/Posting jurnal agar masuk ke Buku Besar.</li>
-</ol>
-                ',
-                'is_published' => true,
-                'keywords' => 'jurnal, journal entry, akuntansi, debit kredit',
-                'related_resource' => 'JournalBatchResource',
-                'order' => 6,
-            ]
         );
 
         // ==========================================
@@ -1005,31 +929,6 @@ class DocumentationSeeder extends Seeder
                 'order' => 5,
             ]
         );
-
-        Documentation::updateOrCreate(
-            ['slug' => 'manajemen-blog-artikel'],
-            [
-                'documentation_category_id' => $adminCategory->id,
-                'title' => 'Manajemen Blog Website',
-                'content' => '
-<h2>Publikasi Artikel & Berita</h2>
-<p>Menu <strong>Blogs</strong> digunakan untuk mengelola konten artikel yang akan tampil di halaman "Blog" pada website utama (frontend).</p>
-
-<h3>Tips Penulisan SEO:</h3>
-<ul>
-    <li>Gunakan Judul yang menarik.</li>
-    <li>Isi "Slug" dengan kata kunci yang relevan.</li>
-    <li>Upload "Featured Image" (Gambar Utama) dengan kualitas bagus.</li>
-    <li>Gunakan kategori dan tags untuk memudahkan pencarian.</li>
-</ul>
-                ',
-                'is_published' => true,
-                'keywords' => 'blog, artikel, berita, seo, konten',
-                'related_resource' => 'BlogResource',
-                'order' => 6,
-            ]
-        );
-
 
     }
 }

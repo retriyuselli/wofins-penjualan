@@ -9,11 +9,8 @@ enum ResourceEnum: string implements HasLabel
     case AccountManagerTargetResource = 'AccountManagerTargetResource';
     case BankReconciliationResource = 'BankReconciliationResource';
     case BankStatementResource = 'BankStatementResource';
-    case BlogResource = 'BlogResource';
     case CategoryResource = 'CategoryResource';
-    case ChartOfAccountResource = 'ChartOfAccountResource';
     case CompanyResource = 'CompanyResource';
-    case CompanyLogoResource = 'CompanyLogoResource';
     case DataPembayaranResource = 'DataPembayaranResource';
     case DataPribadiResource = 'DataPribadiResource';
     case DocumentCategoryResource = 'DocumentCategoryResource';
@@ -24,8 +21,6 @@ enum ResourceEnum: string implements HasLabel
     case ExpenseOpResource = 'ExpenseOpResource';
     case ExpenseResource = 'ExpenseResource';
     case FixedAssetResource = 'FixedAssetResource';
-    case IndustryResource = 'IndustryResource';
-    case JournalBatchResource = 'JournalBatchResource';
     case LeaveBalanceResource = 'LeaveBalanceResource';
     case LeaveRequestResource = 'LeaveRequestResource';
     case LeaveTypeResource = 'LeaveTypeResource';
@@ -39,7 +34,6 @@ enum ResourceEnum: string implements HasLabel
     case PengeluaranLainResource = 'PengeluaranLainResource';
     case PiutangResource = 'PiutangResource';
     case ProductResource = 'ProductResource';
-    case ProspectAppResource = 'ProspectAppResource';
     case ProspectResource = 'ProspectResource';
     case SimulasiProdukResource = 'SimulasiProdukResource';
     case SopCategoryResource = 'SopCategoryResource';
@@ -54,11 +48,8 @@ enum ResourceEnum: string implements HasLabel
             self::AccountManagerTargetResource => 'Account Manager Target',
             self::BankReconciliationResource => 'Bank Reconciliation',
             self::BankStatementResource => 'Bank Statement',
-            self::BlogResource => 'Blog',
             self::CategoryResource => 'Category',
-            self::ChartOfAccountResource => 'Chart Of Account',
             self::CompanyResource => 'Company',
-            self::CompanyLogoResource => 'Company Logo',
             self::DataPembayaranResource => 'Data Pembayaran',
             self::DataPribadiResource => 'Data Pribadi',
             self::DocumentCategoryResource => 'Document Category',
@@ -69,8 +60,6 @@ enum ResourceEnum: string implements HasLabel
             self::ExpenseOpResource => 'Expense Ops',
             self::ExpenseResource => 'Expense',
             self::FixedAssetResource => 'Fixed Asset',
-            self::IndustryResource => 'Industry',
-            self::JournalBatchResource => 'Journal Batch',
             self::LeaveBalanceResource => 'Leave Balance',
             self::LeaveRequestResource => 'Leave Request',
             self::LeaveTypeResource => 'Leave Type',
@@ -84,7 +73,6 @@ enum ResourceEnum: string implements HasLabel
             self::PengeluaranLainResource => 'Pengeluaran Lain',
             self::PiutangResource => 'Piutang',
             self::ProductResource => 'Product',
-            self::ProspectAppResource => 'Prospect App',
             self::ProspectResource => 'Prospect',
             self::SimulasiProdukResource => 'Simulasi Produk',
             self::SopCategoryResource => 'SOP Category',

@@ -21,11 +21,6 @@
             <div class="mt-1 text-xs text-gray-600">{{ number_format($companiesCount) }} data</div>
         </a>
 
-        <a href="{{ route('profile.admin-tools.branding') }}" class="block border border-gray-200 rounded-xl p-5 hover:bg-gray-50 transition">
-            <div class="text-sm font-semibold text-gray-900">Logo & Branding</div>
-            <div class="mt-1 text-xs text-gray-600">{{ number_format($logosCount) }} logo</div>
-        </a>
-
         <a href="{{ route('profile.admin-tools.sops') }}" class="block border border-gray-200 rounded-xl p-5 hover:bg-gray-50 transition">
             <div class="text-sm font-semibold text-gray-900">SOP</div>
             <div class="mt-1 text-xs text-gray-600">{{ number_format($sopsCount) }} SOP</div>

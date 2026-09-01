@@ -71,9 +71,6 @@ class DepreciationHistory extends Page
                         ]);
                         $this->record->updateBookValue();
 
-                        // Create journal entry
-                        $this->record->createDepreciationJournalEntry($depreciationAmount);
-
                         $this->redirect(static::getResource()::getUrl('depreciation-history', ['record' => $this->record]));
                     }
                 })

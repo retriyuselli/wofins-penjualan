@@ -56,7 +56,6 @@ class AssetDepreciationSeeder extends Seeder
                     'accumulated_depreciation_after' => $afterAccum,
                     'book_value_before' => $beforeBook,
                     'book_value_after' => $afterBook,
-                    'journal_batch_id' => null,
                     'notes' => null,
                     'is_adjustment' => false,
                 ]);

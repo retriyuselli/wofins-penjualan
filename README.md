@@ -34,3 +34,4 @@ Lalu jalankan migrasi:
 ```bash
 php artisan migrate
 ```
+# wofins-penjualan

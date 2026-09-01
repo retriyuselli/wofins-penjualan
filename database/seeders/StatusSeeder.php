@@ -19,6 +19,7 @@ class StatusSeeder extends Seeder
             ['status_name' => 'Admin'],
             ['status_name' => 'HRD'],
             ['status_name' => 'Staff'],
+            ['status_name' => 'Lainnya'],
         ];
 
         foreach ($statuses as $status) {

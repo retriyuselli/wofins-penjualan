@@ -63,6 +63,11 @@ class CategorySeeder extends Seeder
                 'slug' => 'undangan-souvenir',
                 'is_active' => true,
             ],
+            [
+                'name' => 'Lainnya',
+                'slug' => 'lainnya',
+                'is_active' => true,
+            ],
         ];
 
         foreach ($categories as $categoryData) {
@@ -75,6 +80,6 @@ class CategorySeeder extends Seeder
             );
         }
 
-        $this->command->info('10 categories created successfully!');
+        $this->command->info(count($categories).' categories seeded successfully!');
     }
 }

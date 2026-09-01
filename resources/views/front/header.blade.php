@@ -59,10 +59,6 @@
                                 class="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition duration-300 {{ request()->routeIs('harga') ? 'text-blue-600 bg-blue-50' : '' }}">
                                 Harga
                             </a>
-                            <a href="{{ route('blog') }}"
-                                class="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition duration-300 {{ request()->routeIs('blog*') ? 'text-blue-600 bg-blue-50' : '' }}">
-                                Blog
-                            </a>
                             <a href="/docs"
                                 class="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition duration-300 {{ request()->is('docs*') ? 'text-blue-600 bg-blue-50' : '' }}">
                                 Docs
@@ -225,8 +221,6 @@
 
                                 <a href="{{ route('harga') }}"
                                     class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Harga</a>
-                                <a href="{{ route('blog') }}"
-                                    class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Blog</a>
                                 <a href="/docs"
                                     class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Docs</a>
                                 <hr class="my-2">

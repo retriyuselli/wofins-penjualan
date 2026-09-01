@@ -124,12 +124,6 @@ return new class extends Migration
         $this->toUnsignedBigInt('asset_depreciations', 'book_value_before', nullable: false, default: 0);
         $this->toUnsignedBigInt('asset_depreciations', 'book_value_after', nullable: false, default: 0);
 
-        $this->toUnsignedBigInt('journal_batches', 'total_debit', nullable: false, default: 0);
-        $this->toUnsignedBigInt('journal_batches', 'total_credit', nullable: false, default: 0);
-
-        $this->toUnsignedBigInt('journal_entries', 'debit_amount', nullable: false, default: 0);
-        $this->toUnsignedBigInt('journal_entries', 'credit_amount', nullable: false, default: 0);
-
         $this->toUnsignedBigInt('nota_dinas_details', 'jumlah_transfer', nullable: false, default: 0);
         $this->toUnsignedBigInt('prospect_apps', 'sisa_bayar', nullable: true, default: null);
     }
