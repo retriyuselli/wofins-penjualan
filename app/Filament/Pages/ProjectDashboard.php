@@ -23,9 +23,9 @@ class ProjectDashboard extends Page
 {
     use BaseDashboard\Concerns\HasFiltersForm;
 
-    protected static ?string $title = 'Welcome';
+    protected static ?string $title = 'Dashboard Proyek';
 
-    protected ?string $heading = 'Welcome';
+    protected ?string $heading = 'Dashboard Proyek';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBriefcase;
 
