@@ -901,8 +901,6 @@ class DocumentationSeeder extends Seeder
             ]
         );
 
-        );
-
         // ==========================================
         // 10. UPDATE ADMINISTRASI: SURAT & BLOG
         // ==========================================

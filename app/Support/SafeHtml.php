@@ -31,7 +31,7 @@ class SafeHtml
             'span' => ['class'],
             'p' => ['class'],
             'ul' => ['class'],
-            'ol' => ['class'],
+            'ol' => ['class', 'type'],
             'li' => ['class'],
             'table' => ['class'],
             'td' => ['colspan', 'rowspan'],

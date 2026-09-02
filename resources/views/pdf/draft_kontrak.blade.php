@@ -6,8 +6,7 @@
     <title>Draft Kontrak</title>
     <style>
         @page {
-            /* Top margin adjusted to ensure content starts below the fixed header on all pages */
-            margin: 110px 45px 30px 65px;
+            margin: 122px 45px 30px 65px;
         }
 
         body {
@@ -21,16 +20,17 @@
         /* Fixed Header */
         header {
             position: fixed;
-            top: -90px;
+            top: -112px;
             left: 0;
             right: 0;
-            height: 100px;
+            height: 105px;
         }
 
         .header-table {
             width: 100%;
             border-bottom: 2px solid #000;
-            padding-bottom: 5px;
+            padding-bottom: 4px;
+            border-collapse: collapse;
         }
 
         .header-table td {
@@ -38,8 +38,10 @@
         }
 
         .logo-img {
-            max-height: 60px;
-            width: 80%;
+            max-width: 180px;
+            max-height: 85px;
+            width: auto;
+            height: auto;
         }
 
         /* Footer */
@@ -76,7 +78,9 @@
             font-weight: bold;
             text-decoration: underline;
             font-size: 11px;
+            margin-top: 2px;
             margin-bottom: 5px;
+            padding-top: 0;
             text-transform: uppercase;
         }
 
@@ -290,6 +294,11 @@
             text-transform: uppercase;
         }
 
+        .termin-list {
+            margin-top: 5px;
+            margin-left: 10px;
+        }
+
         .konfirmasi-list {
             margin-top: 5px;
             margin-bottom: 10px;
@@ -464,6 +473,10 @@
                     @php
                         $logoPath = null;
                         $logoSrc = '';
+                        $logoWidth = null;
+                        $logoHeight = null;
+                        $logoMaxWidth = 180;
+                        $logoMaxHeight = 85;
 
                         if (
                             isset($company) &&
@@ -481,10 +494,22 @@
                                 $logoSrc =
                                     'data:' . $logoMime . ';base64,' . base64_encode(file_get_contents($logoPath));
                             }
+
+                            $logoInfo = @getimagesize($logoPath);
+                            if (is_array($logoInfo) && ($logoInfo[0] ?? 0) > 0 && ($logoInfo[1] ?? 0) > 0) {
+                                $scale = min(
+                                    $logoMaxWidth / $logoInfo[0],
+                                    $logoMaxHeight / $logoInfo[1],
+                                    1
+                                );
+                                $logoWidth = (int) round($logoInfo[0] * $scale);
+                                $logoHeight = (int) round($logoInfo[1] * $scale);
+                            }
                         }
                     @endphp
                     @if ($logoSrc)
-                        <img src="{{ $logoSrc }}" alt="Logo Perusahaan" class="logo-img">
+                        <img src="{{ $logoSrc }}" alt="Logo Perusahaan" class="logo-img"
+                            @if ($logoWidth && $logoHeight) width="{{ $logoWidth }}" height="{{ $logoHeight }}" @endif>
                     @else
                         <b>{{ $companyName }}</b>
                     @endif
@@ -514,7 +539,7 @@
     <!-- MAIN CONTENT -->
 
     <!-- Title -->
-    <div class="title">KONTRAK KERJASAMA PERNIKAHAN</div>
+    <div class="title">{{ $contract['title'] ?? 'KONTRAK KERJASAMA PERNIKAHAN' }}</div>
     <div class="subtitle">Nomor : {{ $nomorSurat }}</div>
 
     <!-- Pihak Pertama -->
@@ -539,8 +564,7 @@
         </tr>
     </table>
     <div class="text-justify indent" style="margin-bottom: 10px;">
-        Bertindak untuk dan atas nama {{ $companyName }} beralamat di {{ $companyAddress }}, selanjutnya disebut
-        PIHAK PERTAMA.
+        {!! $contract['intro_pihak_pertama'] ?? 'Bertindak untuk dan atas nama '.$companyName.' beralamat di '.$companyAddress.', selanjutnya disebut PIHAK PERTAMA.' !!}
     </div>
 
     <!-- Pihak Kedua -->
@@ -566,18 +590,15 @@
         </tr>
     </table>
     <div class="text-justify indent" style="margin-bottom: 15px;">
-        Bertindak untuk dan atas nama diri sendiri, selanjutnya disebut PIHAK KEDUA.
+        {!! $contract['intro_pihak_kedua'] ?? 'Bertindak untuk dan atas nama diri sendiri, selanjutnya disebut PIHAK KEDUA.' !!}
     </div>
 
     <div class="text-justify" style="margin-bottom: 15px;">
-        Sehubungan dengan akan diadakannya Pernikahan <b>{{ $prospect->name_cpw ?? '...' }} &
-            {{ $prospect->name_cpp ?? '...' }}</b> di <b>{{ $prospect->venue ?? '...' }}</b>, berikut adalah rincian
-        dan
-        ketentuan Paket Pernikahannya :
+        {!! $contract['intro_after_parties'] ?? '' !!}
     </div>
 
     <!-- Event Details -->
-    <div class="section-title">Dream Wedding Packages</div>
+    <div class="section-title">{{ $contract['package_section_title'] ?? 'Dream Wedding Packages' }}</div>
     <table class="content-table">
         <tr>
             <td class="label">Nama Acara</td>
@@ -733,7 +754,7 @@
     <div class="section-title" style="margin-top: 15px;">PERINCIAN BIAYA</div>
     <table class="content-table" style="width: 100%;">
         <tr>
-            <td style="padding: 5px 0;"><b>DREAM WEDDING PACKAGE</b></td>
+            <td style="padding: 5px 0;"><b>{{ $contract['package_price_label'] ?? 'DREAM WEDDING PACKAGE' }}</b></td>
             <td style="width: 1%; white-space: nowrap; padding: 5px 0;"><b>: Rp. </b></td>
             <td style="width: 60%; padding: 5px 0; text-align: left;">
                 <b>&nbsp;{{ number_format($baseTotalPrice, 0, ',', '.') }},-</b>
@@ -773,7 +794,7 @@
     </table>
 
     <!-- Facilities -->
-    <div class="section-title" style="margin-top: 15px;">DENGAN RINCIAN FASILITAS SEBAGAI BERIKUT :</div>
+    <div class="section-title" style="margin-top: 15px;">{{ $contract['facilities_heading'] ?? 'DENGAN RINCIAN FASILITAS SEBAGAI BERIKUT :' }}</div>
     @php
         $groupedItems = $items->groupBy(function ($item) {
             return $item->vendor->name ?? 'LAIN-LAIN';
@@ -926,174 +947,24 @@
         </div>
     @endif
 
-    <!-- Detail Pelayanan -->
-    <div class="section-title">DETAIL PELAYANAN</div>
-    <div class="facility-list">
-        <ol>
-            <li>1 Event Manager dan 15 kru (Akad + Resepsi)</li>
-            <li>Wedding Planner (Pelayanan pengantin dimulai dari persiapan sampai dengan selesai acara (0% - 100%))</li>
-            <li>Wedding Checklist</li>
-            <li>Konsultasi acara akad dan resepsi</li>
-            <li>Konsultasi budget calon pengantin</li>
-            <li>Meeting dengan team wo dan vendor</li>
-            <li>Gratis pembuatan foto slide untuk acara resepsi</li>
-            <li>Memonitor semua pelaksanaan Akad dan Resepsi sesuai dengan rundown acara yang telah disepakati sebelumnya</li>
-        </ol>
-    </div>
-
-    <div class="section-title">SEBELUM HARI H</div>
-    <div class="facility-list">
-        <ol>
-            <li>Free Konsultasi.</li>
-            <li>Pertemuan secara berkala untuk pembahasan konsep acara dan waktu pelaksanaan.</li>
-            <li>Membuat dan memantau “wedding checklist”.</li>
-            <li>Follow up dan koordinasi dengan vendor terkait.</li>
-            <li>Mengatur dan berkoordinasi dengan mempelai dan vendor untuk waktu Technical meeting.</li>
-            <li>Konfirmasi ke orang tua, bestman, bridesmaid, pihak keluarga yang menjadi panitia.</li>
-            <li>Pertemuan dengan pihak keluarga (jika diperlukan).</li>
-        </ol>
-    </div>
-
-    <div class="section-title">HARI “H” — WEDDING DAY</div>
-    <div class="facility-list">
-        <ol>
-            <li>Tim organizer terdiri dari 6 orang (akad) dan 15 orang (resepsi).</li>
-            <li>Standby 2 jam sebelum prosesi awal masing -masing mempelai (rumah / apartemen / hotel)</li>
-            <li>Koordinasi & briefing dengan pihak keluarga mengenai prosesi pelepasan dan pertemuan pengantin.</li>
-            <li>Menyediakan time Keeper agar acara berlangsung sesuai rundown. (Prosesi pertemuan ke-2 pengantin, persiapan resepsi & acara resepsi).</li>
-            <li>Membantu acara akad nikah dan berkoordinasi dengan pihak yang bersangkutan.</li>
-            <li>Pengawasan kinerja para vendor selama acara berlangsung untuk hasil yang maksimal.</li>
-            <li>Gladire sik sebelum acara berlangsung.</li>
-        </ol>
-    </div>
-
-    <!-- Terms & Confirmation -->
-    <div class="section-title">KETENTUAN TAMBAHAN</div>
-    <div class="section-title">KONFIRMASI</div>
-    <ol class="konfirmasi-list">
-        <li>PIHAK PERTAMA harus menerima konfirmasi dari PIHAK KEDUA tentang acara/event tersebut di atas
-            selambat-lambatnya 3 (tiga) hari kerja dari Kontrak Kerjasama Paket Pernikahan ini dibuat.</li>
-        <li>Pembatalan secara mendadak setelah Kontrak Kerjasama Paket Pernikahan ini ditandatangani akan dikenakan
-            biaya sebesar 50% dari total biaya yang tercantum di Kontrak Kerjasama Paket Pernikahan.</li>
-        <li>Kontrak Kerjasama Paket Pernikahan ini juga berlaku sebagai Jaminan atas Pembayaran dari PIHAK KEDUA.
-        </li>
-        <li>PIHAK PERTAMA akan tetap mengikuti kebijakan pihak Gedung yang menjadi lokasi pernikahan yang dipilih
-            oleh
-            PIHAK KEDUA.</li>
-    </ol>
-
-    <div class="section-title">PEMBAYARAN</div>
-    <ol>
-        <li>
-            Pembayaran DP (Down Payment) sebesar
-            Rp. {{ number_format($record->payment_dp_amount ?? 0, 0, ',', '.') }},-
-            sebagai Booking Date.
-        </li>
-        @php
-            $termins = $record->payment_simulation ?? [];
-            $terminCount = is_array($termins) ? count($termins) : 0;
-        @endphp
-        <li>
-            Pembayaran termin dilakukan sesuai simulasi pembayaran:
-            @if ($terminCount > 0)
-                <ol type="a" style="margin-top: 5px; margin-left: 10px;">
-                    @foreach ($termins as $index => $termin)
-                        @php
-                            $persen = $termin['persen'] ?? null;
-                            $nominal = $termin['nominal'] ?? null;
-                            $bulan = $termin['bulan'] ?? null;
-                            $tahun = $termin['tahun'] ?? null;
-                        @endphp
-                        <li>
-                            Termin {{ $index + 1 }}
-                            @if (!is_null($nominal))
-                                sebesar Rp. {{ number_format((float) $nominal, 0, ',', '.') }},-
-                            @endif
-                            @if (!is_null($persen))
-                                yaitu {{ rtrim(rtrim(number_format((float) $persen, 2, ',', '.'), '0'), ',') }}%
-                            @endif
-                            @if (!empty($bulan))
-                                pada Bulan {{ $bulan }}@if (!is_null($tahun))
-                                    {{ $tahun }}
-                                @endif
-                            @endif
-                        </li>
-                    @endforeach
-                </ol>
-            @else
-                dengan ketentuan yang disepakati bersama oleh kedua belah pihak.
-            @endif
-        </li>
-        <li>Pelunasan pembayaran paling lambat H-14 (Empat Belas Hari) sebelum acara dilaksanakan.</li>
-        <li>Pembayaran dapat dilakukan melalui transfer ke rekening:
-            <div style="text-align: center; margin-top: 10px; margin-bottom: 10px;">
-                Bank <b>{{ $companyBankName }}</b><br>
-                No. Rekening: <b>{{ $companyBankAccount }}</b><br>
-                A.n: <b>{{ $companyBankHolder }}</b>
-            </div>
-        </li>
-        <li>Bukti transfer dapat di email ke {{ $companyEmail }} atau datang langsung ke kantor {{ $companyName }}
-            dengan
-            menunjukkan bukti ke bagian administrasi.</li>
-        <li>Pembayaran secara tunai dilakukan langsung ke bagian administrasi di kantor {{ $companyName }} dan
-            PIHAK KEDUA akan menerima bukti pembayaran atau pelunasan yang telah ditandatangani oleh bagian keuangan
-            atau bisa langsung menghubungi saudari <b>{{ $financeUser->name ?? 'Finance' }} di nomor
-                {{ $financeUser->phone_number ?? '-' }}</b>.</li>
-        <li>Tidak dibenarkan melakukan pembayaran di luar dengan cara menitipkan kepada pihak lain selain yang
-            ditunjuk oleh PIHAK PERTAMA.</li>
-    </ol>
-
-    <div class="section-title" style="margin-top: 10px;">VENDOR</div>
-    <ol>
-        <li>Vendor pernikahan yang telah dipilih oleh PIHAK KEDUA, wajib bertanggung jawab terhadap fasilitas yang
-            telah
-            diberikan sesuai dengan paket yang telah dipilih. PIHAK PERTAMA bersedia membantu sebagai mediator dalam
-            berdiskusi dan koordinasi jika terjadi kendala dengan vendor.</li>
-        <li>PIHAK PERTAMA akan memberikan daftar rekomendasi vendor yang telah sesuai dengan kriteria sehingga dapat
-            dijadikan pilihan oleh PIHAK KEDUA dalam menentukan vendor pernikahan.</li>
-        <li>PIHAK KEDUA dapat melakukan perubahan vendor diluar rekomendasi yang telah disampaikan dengan
-            menyesuaikan
-            perhitungan dari paket sebelumnya.</li>
-        <li>Apabila diperlukan, para vendor akan diminta untuk membuat kontrak kerjasama yang isinya mengenai
-            pertanggungjawaban para vendor terhadap keberhasilan acara pernikahan sesuai dengan ketentuan yang telah
-            disepakati sebelumnya antara vendor dan PIHAK KEDUA.</li>
-        <li>Jika vendor yang telah dipilih PIHAK KEDUA tidak mampu mengikuti kesepakatan dari PIHAK KEDUA mengenai
-            pertanggung jawaban, maka PIHAK PERTAMA akan memberikan rekomendasi vendor lain yang mampu mengikuti
-            kesepakatan PIHAK PERTAMA dan PIHAK KEDUA</li>
-    </ol>
-
-    <div class="section-title" style="margin-top: 10px;">PEMBATALAN :</div>
-    <ol>
-        <li>Apabila terjadi pembatalan sepihak dari konsumen (keluarga/pengantin) PIHAK KEDUA, maka uang yang telah
-            disetorkan dapat dikembalikan dengan syarat sebagai berikut :</li>
-        <li>Jika pembatalan 3 (tiga) bulan sebelum acara berlangsung maka akan dikenakan biaya 50% dari total biaya
-            yang
-            telah disepakati.</li>
-        <li>Jika pembatalan 1 (satu) bulan sebelum acara berlangsung, maka akan dikenakan biaya 100% dari total
-            biaya
-            yang telah disepakati.</li>
-        <li>Jika pembatalan dilakukan setelah ada pembayaran ke beberapa vendor, maka uang yang telah disetor ke
-            vendor
-            akan mengikuti kebijakan dari masing - masing vendor dalam hal pengembalian uang.</li>
-        <li>Uang muka sebagai tanda jadi atau down payment (DP) yang telah dibayarkan tidak dapat dikembalikan.</li>
-    </ol>
-
-    <div class="section-title" style="margin-top: 10px;">FORCE MAJEURE</div>
-    <ol>
-        <li>Force Majeure yang dimaksud adalah suatu keadaan memaksa diluar batas kemampuan kedua belah pihak yang
-            dapat
-            menggangu bahkan menggagalkan terlaksananya event, seperti bencana alam, pandemi penyakit berbahaya,
-            peperangan, pemogokan, sabotase, pemberontakan masyarakat, blokade, kebijaksanaan pemerintah dan
-            khususnya
-            yang disebabkan diluar batas kemampuan manusia.</li>
-        <li>Terhadap pembatalan akibat dari Force Majeure, PIHAK PERTAMA dan PIHAK KEDUA sepakat untuk menanggung
-            kerugiannya masing – masing.</li>
-    </ol>
+    @php
+        $contractSections = $contract['sections'] ?? [];
+        $termsKeys = ['konfirmasi', 'pembayaran', 'vendor', 'pembatalan', 'force_majeure'];
+        $shownTermsHeading = false;
+    @endphp
+    @foreach ($contractSections as $section)
+        @if (! $shownTermsHeading && in_array($section['key'] ?? '', $termsKeys, true))
+            <div class="section-title">KETENTUAN TAMBAHAN</div>
+            @php $shownTermsHeading = true; @endphp
+        @endif
+        <div class="section-title">{{ $section['title'] }}</div>
+        <div class="facility-list">
+            {!! $section['html'] !!}
+        </div>
+    @endforeach
 
     <p style="text-align: justify; margin-top: 10px;">
-        Demikianlah Kontrak Kerjasama Paket Pernikahan ini dibuat dalam 2 (dua) rangkap dan ditandatangani oleh
-        kedua
-        belah pihak.
+        {!! $contract['closing_text'] ?? 'Demikianlah Kontrak Kerjasama Paket Pernikahan ini dibuat dalam 2 (dua) rangkap dan ditandatangani oleh kedua belah pihak.' !!}
     </p>
 
     <!-- Signatures -->

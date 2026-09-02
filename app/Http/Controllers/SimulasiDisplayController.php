@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Company;
 use App\Models\SimulasiProduk;
+use App\Models\User;
+use App\Services\ContractTemplateService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon; // Import View
 use Illuminate\Support\Facades\Gate;
@@ -124,7 +126,7 @@ class SimulasiDisplayController extends Controller
 
         $sequenceFormatted = str_pad((string) $sequence, 3, '0', STR_PAD_LEFT);
 
-        $company = Company::first();
+        $company = Company::with('paymentMethod')->first();
         $inisialWo = $company?->inisial_wo ?: 'MW';
         $inisialKontrak = $company?->inisial_kontak ?: 'KKP';
 
@@ -136,8 +138,23 @@ class SimulasiDisplayController extends Controller
             $nomorSurat = $baseNumber.'/'.$inisialWo.'/'.$inisialKontrak.'/'.$bulanRomawi.'/'.$tahun;
         }
 
-        // Find Finance User
-        $financeUser = \App\Models\User::role('Finance')->first();
+        $financeUser = User::role('Finance')->first();
+        $record->loadMissing(['prospect', 'product', 'user']);
+
+        $templateService = app(ContractTemplateService::class);
+        $template = $templateService->resolve($company);
+        $contract = $templateService->render(
+            $template,
+            $templateService->variablesFor(
+                $record,
+                $company,
+                $nomorSurat,
+                $financeUser,
+                $company?->paymentMethod?->bank_name ?: '{Isi dengan nama bank perusahaan}',
+                $company?->paymentMethod?->no_rekening ?: '{Isi dengan nomor rekening bank perusahaan}',
+                $company?->paymentMethod?->name ?: '{Isi dengan nama pemegang rekening bank perusahaan}',
+            ),
+        );
 
         $data = [
             'record' => $record,
@@ -146,6 +163,7 @@ class SimulasiDisplayController extends Controller
             'nomorSurat' => $nomorSurat,
             'financeUser' => $financeUser,
             'company' => $company,
+            'contract' => $contract,
         ];
 
         $pdf = Pdf::loadView('pdf.draft_kontrak', $data);

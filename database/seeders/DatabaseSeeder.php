@@ -30,6 +30,7 @@ class DatabaseSeeder extends Seeder
             ChartOfAccountSeeder::class,   // Bagan Akun untuk akuntansi.
             FixedAssetChartOfAccountsSeeder::class, // Akun aset tetap dan akumulasi penyusutan.
             CompanySeeder::class,          // Data perusahaan.
+            ContractTemplateSeeder::class, // Template default draft kontrak.
 
             // 2. Data Pengguna (tergantung pada Status dan Role)
             UserSeeder::class,             // Pengguna sistem (admin, staff, dll).

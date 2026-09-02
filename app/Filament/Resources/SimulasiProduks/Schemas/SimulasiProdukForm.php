@@ -59,6 +59,52 @@ class SimulasiProdukForm
         $set('pengurangan', $pengurangan);
 
         SimulasiProdukResource::recalculateGrandTotal($get, $set);
+        self::syncAllPaymentNominals($get, $set);
+    }
+
+    private static function paymentRemaining(Get $get, string $prefix = ''): float
+    {
+        $grandTotal = SimulasiProdukResource::parseCurrency($get($prefix.'grand_total'));
+        $dp = SimulasiProdukResource::parseCurrency($get($prefix.'payment_dp_amount'));
+
+        return max(0.0, $grandTotal - $dp);
+    }
+
+    private static function nominalFromPersen(mixed $persen, float $remaining): int
+    {
+        return (int) round($remaining * ((float) $persen / 100));
+    }
+
+    private static function syncAllPaymentNominals(Get $get, Set $set, string $prefix = ''): void
+    {
+        $remaining = self::paymentRemaining($get, $prefix);
+        $items = $get($prefix.'payment_simulation') ?? [];
+        if (! is_array($items)) {
+            $set($prefix.'total_simulation', SimulasiProdukResource::parseCurrency($get($prefix.'payment_dp_amount')));
+
+            return;
+        }
+
+        $dp = SimulasiProdukResource::parseCurrency($get($prefix.'payment_dp_amount'));
+        $total = $dp;
+
+        foreach ($items as $key => $item) {
+            $persen = (float) ($item['persen'] ?? 0);
+            $nominal = self::nominalFromPersen($persen, $remaining);
+            $items[$key]['nominal'] = $nominal;
+            $total += $nominal;
+        }
+
+        $set($prefix.'payment_simulation', $items);
+        $set($prefix.'total_simulation', $total);
+    }
+
+    private static function applyPersenOnItem(Get $get, Set $set, mixed $state): void
+    {
+        $remaining = self::paymentRemaining($get, '../../');
+        $nominal = self::nominalFromPersen($state, $remaining);
+        $set('nominal', $nominal);
+        self::syncAllPaymentNominals($get, $set, '../../');
     }
 
     public static function configure(): array
@@ -225,19 +271,14 @@ class SimulasiProdukForm
                                 ->stripCharacters(',')
                                 ->default(0)
                                 ->live(onBlur: true)
-                                ->afterStateUpdated(function (Get $get, Set $set, $state) {
-                                    $dp = SimulasiProdukResource::parseCurrency($state);
-                                    $items = $get('payment_simulation') ?? [];
-                                    $total = $dp;
-                                    foreach ($items as $item) {
-                                        $total += SimulasiProdukResource::parseCurrency($item['nominal'] ?? 0);
-                                    }
-                                    $set('total_simulation', $total);
+                                ->afterStateUpdated(function (Get $get, Set $set) {
+                                    self::syncAllPaymentNominals($get, $set);
                                 })
                                 ->formatStateUsing(fn ($state) => number_format((float) $state, 0, '.', ',')),
                             Repeater::make('payment_simulation')
                                 ->label('Simulasi Pembayaran')
                                 ->collapsed()
+                                ->defaultItems(1)
                                 ->itemLabel(function (array $state): ?string {
                                     $bulanRaw = $state['bulan'] ?? null;
                                     $bulan = is_object($bulanRaw)
@@ -245,7 +286,7 @@ class SimulasiProdukForm
                                         : (is_string($bulanRaw) ? $bulanRaw : 'Termin');
                                     $tahun = (string) ($state['tahun'] ?? '');
                                     $nominalRaw = $state['nominal'] ?? 0;
-                                    $nominalVal = is_numeric($nominalRaw) ? (float) $nominalRaw : (float) \App\Filament\Resources\SimulasiProduks\SimulasiProdukResource::parseCurrency($nominalRaw);
+                                    $nominalVal = is_numeric($nominalRaw) ? (float) $nominalRaw : (float) SimulasiProdukResource::parseCurrency($nominalRaw);
 
                                     return $bulan.' '.$tahun.' - Rp '.number_format($nominalVal, 0, '.', ',');
                                 })
@@ -254,21 +295,21 @@ class SimulasiProdukForm
                                         ->label('Persen (%)')
                                         ->numeric()
                                         ->suffix('%')
+                                        ->minValue(0)
+                                        ->maxValue(100)
                                         ->default(100)
-                                        ->afterStateUpdated(function (Get $get, Set $set, $state) {
-                                            $grandTotal = SimulasiProdukResource::parseCurrency($get('../../grand_total'));
-                                            $dp = SimulasiProdukResource::parseCurrency($get('../../payment_dp_amount'));
-                                            $remaining = $grandTotal - $dp;
-                                            if ($remaining > 0) {
-                                                $nominal = $remaining * ($state / 100);
-                                                $set('nominal', $nominal);
-                                                $total = $dp;
-                                                $items = $get('../../payment_simulation') ?? [];
-                                                foreach ($items as $item) {
-                                                    $total += SimulasiProdukResource::parseCurrency($item['nominal'] ?? 0);
-                                                }
-                                                $set('../../total_simulation', $total);
+                                        ->live()
+                                        ->helperText('Nominal dihitung otomatis dari sisa paket (Nilai Paket − DP) × persen.')
+                                        ->afterStateHydrated(function (Get $get, Set $set, $state) {
+                                            $currentNominal = SimulasiProdukResource::parseCurrency($get('nominal'));
+                                            if ($currentNominal > 0 || blank($state)) {
+                                                return;
                                             }
+
+                                            $set('nominal', self::nominalFromPersen($state, self::paymentRemaining($get, '../../')));
+                                        })
+                                        ->afterStateUpdated(function (Get $get, Set $set, $state) {
+                                            self::applyPersenOnItem($get, $set, $state);
                                         }),
                                     TextInput::make('nominal')
                                         ->label('Nominal')
@@ -276,15 +317,15 @@ class SimulasiProdukForm
                                         ->mask(RawJs::make('$money($input)'))
                                         ->dehydrateStateUsing(fn ($state) => (int) preg_replace('/[^\d]/', '', (string) $state))
                                         ->stripCharacters(',')
+                                        ->live(onBlur: true)
                                         ->afterStateUpdated(function (Get $get, Set $set, $state) {
-                                            $grandTotal = SimulasiProdukResource::parseCurrency($get('../../grand_total'));
-                                            $dp = SimulasiProdukResource::parseCurrency($get('../../payment_dp_amount'));
-                                            $remaining = $grandTotal - $dp;
+                                            $remaining = self::paymentRemaining($get, '../../');
                                             $nominalVal = SimulasiProdukResource::parseCurrency($state);
                                             if ($remaining > 0) {
-                                                $persen = ($nominalVal / $remaining) * 100;
-                                                $set('persen', number_format($persen, 2));
+                                                $set('persen', round(($nominalVal / $remaining) * 100, 2));
                                             }
+
+                                            $dp = SimulasiProdukResource::parseCurrency($get('../../payment_dp_amount'));
                                             $items = $get('../../payment_simulation') ?? [];
                                             $total = $dp;
                                             foreach ($items as $item) {
