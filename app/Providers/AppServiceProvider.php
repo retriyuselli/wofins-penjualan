@@ -166,6 +166,22 @@ class AppServiceProvider extends ServiceProvider
         
         FilamentClearCache::addCommand('optimize:clear');
 
+        RateLimiter::for('data-pribadi-public', function (Request $request): array {
+            $ip = $request->ip() ?? 'unknown-ip';
+            $email = strtolower(trim((string) $request->input('email', '')));
+
+            $limits = [
+                Limit::perMinute(3)->by('data-pribadi:ip:'.$ip),
+                Limit::perHour(8)->by('data-pribadi:hour:'.$ip),
+            ];
+
+            if ($email !== '') {
+                $limits[] = Limit::perHour(3)->by('data-pribadi:email:'.$email);
+            }
+
+            return $limits;
+        });
+
         RateLimiter::for('absensi-submit', function (Request $request): array {
             $userKey = $request->user()?->getAuthIdentifier() ?? 'guest';
             $ip = $request->ip() ?? 'unknown-ip';

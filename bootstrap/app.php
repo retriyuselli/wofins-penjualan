@@ -28,6 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'project.access' => \App\Http\Middleware\CheckProjectAccess::class,
             'no-store' => \App\Http\Middleware\NoStoreResponse::class,
             'super-admin' => \App\Http\Middleware\EnsureSuperAdmin::class,
+            'public-form' => \App\Http\Middleware\PublicFormSecurityHeaders::class,
         ]);
 
         // Ensure proper web middleware group for Niaga Hoster

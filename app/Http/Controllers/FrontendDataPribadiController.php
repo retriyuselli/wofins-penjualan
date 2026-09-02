@@ -2,81 +2,78 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StorePublicDataPribadiRequest;
 use App\Models\DataPribadi;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\View\View; // Import Validator
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use Illuminate\View\View;
 
 class FrontendDataPribadiController extends Controller
 {
-    /**
-     * Show the form for creating a new resource.
-     *
-     * @return View
-     */
-    public function create()
+    private const SESSION_OPENED_AT = 'data_pribadi_opened_at';
+
+    private const SESSION_SUBMITTED = 'data_pribadi_submitted';
+
+    public function create(Request $request): View
     {
+        $request->session()->put(self::SESSION_OPENED_AT, now()->timestamp);
+
         return view('data-pribadi.create');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     *
-     * @return RedirectResponse
-     */
-    public function store(Request $request)
+    public function store(Request $request): RedirectResponse
     {
-        $validator = Validator::make($request->all(), [
-            'nama_lengkap' => 'required|string|max:255',
-            'email' => 'required|email|max:255|unique:data_pribadis,email',
-            'nomor_telepon' => 'nullable|string|max:20',
-            'tanggal_lahir' => 'nullable|date',
-            'jenis_kelamin' => 'nullable|string|in:Laki-laki,Perempuan',
-            'alamat' => 'nullable|string',
-            // Validasi untuk foto: harus gambar, tipe mime tertentu, dan ukuran maksimal 1MB (1024 KB)
-            'foto' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:1024',
-            'pekerjaan' => 'nullable|string|max:255',
-            'gaji' => 'nullable|numeric|min:0', // Pastikan ini sudah dibersihkan dari format titik jika perlu
-            'motivasi_kerja' => 'nullable|string',
-            'pelatihan' => 'nullable|string',
-        ]);
-
-        // Membersihkan input gaji dari format titik sebelum validasi jika dikirim dengan format
-        if ($request->has('gaji')) {
-            $request->merge([
-                'gaji' => str_replace('.', '', $request->input('gaji')),
+        if ($this->isHoneypotTriggered($request)) {
+            Log::notice('data_pribadi_blocked', [
+                'reason' => 'honeypot',
+                'ip' => $request->ip(),
             ]);
+
+            return $this->fakeSuccess($request);
         }
 
-        if ($validator->fails()) {
+        if (! $this->formWasOpenedProperly($request)) {
             return redirect()->route('data-pribadi.create')
-                ->withErrors($validator)
-                ->withInput();
+                ->withErrors(['nama_lengkap' => 'Silakan buka formulir dari tautan resmi, isi dengan lengkap, lalu kirim ulang.'])
+                ->withInput($request->except(['foto', 'company_website']));
         }
 
-        $data = $validator->validated();
+        $validated = app(StorePublicDataPribadiRequest::class)->validated();
 
         if ($request->hasFile('foto')) {
-            $path = $request->file('foto')->store('data-pribadi-fotos', 'public');
-            $data['foto'] = $path;
+            $file = $request->file('foto');
+            $extension = strtolower((string) $file->guessExtension() ?: $file->extension());
+            if (! in_array($extension, ['jpg', 'jpeg', 'png', 'gif'], true)) {
+                return redirect()->route('data-pribadi.create')
+                    ->withErrors(['foto' => 'Format foto harus jpg, jpeg, png, atau gif.'])
+                    ->withInput($request->except(['foto', 'company_website']));
+            }
+
+            $validated['foto'] = $file->storeAs(
+                'data-pribadi-fotos',
+                Str::uuid()->toString().'.'.$extension,
+                'public'
+            );
+        } elseif (isset($validated['foto']) && ! is_string($validated['foto'])) {
+            unset($validated['foto']);
         }
 
-        DataPribadi::create($data);
+        DataPribadi::create($validated);
+
+        $request->session()->forget(self::SESSION_OPENED_AT);
+        $request->session()->put(self::SESSION_SUBMITTED, true);
 
         return redirect()->route('data-pribadi.success')->with('success', 'Data pribadi berhasil disimpan!');
     }
 
-    public function index(Request $request) // Tambahkan Request $request
+    public function index(Request $request): View
     {
         $query = DataPribadi::query();
 
-        // Logika Pencarian
-        if ($request->has('search') && $request->search != '') {
-            $searchTerm = $request->search;
-            // Sesuaikan 'nama_lengkap' dengan nama kolom yang benar di tabel Anda
-            $query->where('nama_lengkap', 'LIKE', '%'.$searchTerm.'%');
+        if ($request->filled('search')) {
+            $query->where('nama_lengkap', 'LIKE', '%'.$request->string('search')->toString().'%');
         }
 
         $dataPribadis = $query->orderBy('created_at', 'desc')->paginate(10);
@@ -84,13 +81,37 @@ class FrontendDataPribadiController extends Controller
         return view('data-pribadi.index', compact('dataPribadis'));
     }
 
-    /**
-     * Show success thank-you page after storing data.
-     *
-     * @return View
-     */
-    public function success(): View
+    public function success(Request $request): View|RedirectResponse
     {
+        if (! $request->session()->pull(self::SESSION_SUBMITTED) && ! $request->session()->has('success')) {
+            return redirect()->route('data-pribadi.create');
+        }
+
         return view('data-pribadi.success');
+    }
+
+    private function isHoneypotTriggered(Request $request): bool
+    {
+        return filled($request->input('company_website'));
+    }
+
+    private function formWasOpenedProperly(Request $request): bool
+    {
+        $openedAt = (int) $request->session()->get(self::SESSION_OPENED_AT, 0);
+
+        if ($openedAt < 1) {
+            return false;
+        }
+
+        $elapsed = now()->timestamp - $openedAt;
+
+        return $elapsed >= 3 && $elapsed <= 14400;
+    }
+
+    private function fakeSuccess(Request $request): RedirectResponse
+    {
+        $request->session()->put(self::SESSION_SUBMITTED, true);
+
+        return redirect()->route('data-pribadi.success')->with('success', 'Data pribadi berhasil disimpan!');
     }
 }

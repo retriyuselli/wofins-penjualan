@@ -5,6 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tambah Data Pribadi</title>
+    <meta name="robots" content="noindex, nofollow, noarchive">
+    <meta name="referrer" content="same-origin">
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
@@ -106,6 +108,14 @@
             border-radius: .75rem;
             border: 1px solid #e5e7eb;
         }
+        .hp-field {
+            position: absolute;
+            left: -10000px;
+            top: auto;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+        }
     </style>
 </head>
 
@@ -161,9 +171,11 @@
                             <div class="subtitle">Lengkapi informasi Anda untuk bergabung dengan {{ $companyName }}</div>
                         </div>
                     </div>
-                    <a href="{{ route('data-pribadi.index') }}" class="btn btn-light btn-sm rounded-pill px-3">
-                        <i class="bi bi-arrow-left me-1"></i> Kembali
-                    </a>
+                    @auth
+                        <a href="{{ route('data-pribadi.index') }}" class="btn btn-light btn-sm rounded-pill px-3">
+                            <i class="bi bi-arrow-left me-1"></i> Kembali
+                        </a>
+                    @endauth
                 </div>
             </div>
             <div class="card-body p-4 p-md-5">
@@ -190,8 +202,12 @@
                     </li>
                 </ul>
 
-                <form action="{{ route('data-pribadi.store') }}" method="POST" enctype="multipart/form-data">
+                <form action="{{ route('data-pribadi.store') }}" method="POST" enctype="multipart/form-data" autocomplete="on">
             @csrf
+            <div class="hp-field" aria-hidden="true">
+                <label for="company_website">Situs perusahaan</label>
+                <input type="text" id="company_website" name="company_website" value="" tabindex="-1" autocomplete="off">
+            </div>
             <div class="tab-content mb-4">
 
             <div class="tab-pane fade show active" id="step-profil" role="tabpanel">
@@ -298,8 +314,8 @@
                 <div class="col-md-6 mb-3">
                     <label for="foto" class="form-label">Foto Profil <span class="text-danger">*</span></label>
                     <input class="form-control @error('foto') is-invalid @enderror" type="file" id="foto"
-                        name="foto" accept="image/*" required @error('foto') aria-invalid="true" @enderror>
-                    <div class="form-text mt-1">Unggah foto profil (maks. 1MB, format: jpg, png, gif).</div>
+                        name="foto" accept="image/jpeg,image/png,image/gif,.jpg,.jpeg,.png,.gif" required @error('foto') aria-invalid="true" @enderror>
+                    <div class="form-text mt-1">Unggah foto profil (maks. 1MB, format: jpg, jpeg, png, gif).</div>
                     <div class="foto-preview-wrap">
                         <img id="foto-preview" src="#" alt="Pratinjau Foto"
                             style="max-width: 200px; max-height: 200px; margin-top: 10px; display: none;" />

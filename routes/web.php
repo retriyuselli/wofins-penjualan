@@ -267,26 +267,25 @@ Route::get('/laporan/net-cash-flow/pdf/stream', [ReportController::class, 'strea
     ->name('reports.net-cash-flow.pdf.stream')
     ->middleware($authNoStoreThrottle);
 
+$publicDataPribadi = ['no-store', 'public-form'];
+
 // RUTE DATA PRIBADI
-// Route untuk menampilkan form tambah data pribadi
+// Form publik: boleh diakses tanpa login. Daftar data tetap wajib login.
 Route::get('/data-pribadi/tambah', [FrontendDataPribadiController::class, 'create'])
     ->name('data-pribadi.create')
-    ->middleware($authNoStore);
+    ->middleware([...$publicDataPribadi, 'throttle:30,1']);
 
-// Route untuk menampilkan daftar data pribadi
 Route::get('/data-pribadi', [FrontendDataPribadiController::class, 'index'])
     ->name('data-pribadi.index')
     ->middleware($authNoStore);
 
-// Route untuk menyimpan data baru dari form
 Route::post('/data-pribadi', [FrontendDataPribadiController::class, 'store'])
     ->name('data-pribadi.store')
-    ->middleware($authNoStore);
+    ->middleware([...$publicDataPribadi, 'throttle:data-pribadi-public']);
 
-// Route untuk halaman sukses setelah submit
 Route::get('/data-pribadi/success', [FrontendDataPribadiController::class, 'success'])
     ->name('data-pribadi.success')
-    ->middleware($authNoStore);
+    ->middleware($publicDataPribadi);
 
 // AUTHENTICATION
 Route::middleware(['guest', 'no-store'])->group(function () {
