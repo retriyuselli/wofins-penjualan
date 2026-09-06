@@ -77,6 +77,17 @@
             min-height: 100vh !important;
         }
 
+        .header-logo .company-logo {
+            display: block;
+            max-width: 250px;
+            max-height: 100px;
+            width: auto !important;
+            height: auto !important;
+            object-fit: contain;
+            object-position: right center;
+            margin-left: auto;
+        }
+
         th {
             text-transform: uppercase;
         }
@@ -152,6 +163,14 @@
 
             tfoot {
                 display: table-footer-group !important;
+            }
+
+            .header-logo .company-logo {
+                width: auto !important;
+                height: auto !important;
+                max-width: 250px !important;
+                max-height: 100px !important;
+                object-fit: contain !important;
             }
 
             tr {
@@ -393,6 +412,10 @@ Invoice Area
                                                         <div style="text-align: left; border: none !important; min-width: 0; flex: 1 1 auto;">
                                                             @php
                                                                 $company = $company ?? \App\Models\Company::first();
+                                                                $logoMaxWidth = 250;
+                                                                $logoMaxHeight = 100;
+                                                                $logoWidth = null;
+                                                                $logoHeight = null;
 
                                                                 if (
                                                                     $company &&
@@ -404,9 +427,20 @@ Invoice Area
                                                                     $logoPath = public_path('images/logomki.png');
                                                                 }
 
-                                                                $logoSrc = file_exists($logoPath)
-                                                                    ? 'data:' . mime_content_type($logoPath) . ';base64,' . base64_encode(file_get_contents($logoPath))
-                                                                    : '';
+                                                                $logoSrc = '';
+                                                                if (is_string($logoPath) && file_exists($logoPath)) {
+                                                                    $logoMime = mime_content_type($logoPath);
+                                                                    if ($logoMime) {
+                                                                        $logoSrc = 'data:' . $logoMime . ';base64,' . base64_encode(file_get_contents($logoPath));
+                                                                    }
+
+                                                                    $logoInfo = @getimagesize($logoPath);
+                                                                    if (is_array($logoInfo) && ($logoInfo[0] ?? 0) > 0 && ($logoInfo[1] ?? 0) > 0) {
+                                                                        $scale = min($logoMaxWidth / $logoInfo[0], $logoMaxHeight / $logoInfo[1], 1);
+                                                                        $logoWidth = (int) round($logoInfo[0] * $scale);
+                                                                        $logoHeight = (int) round($logoInfo[1] * $scale);
+                                                                    }
+                                                                }
                                                             @endphp
                                                             <b>Office Information :</b>
                                                             <address style="white-space: normal; overflow-wrap: anywhere; word-break: break-word;">
@@ -418,13 +452,14 @@ Invoice Area
                                                         </div>
 
                                                         <div class="header-logo"
-                                                            style="max-height: 100px; text-align: right; flex: 0 0 auto; margin-left: auto;">
+                                                            style="max-width: 250px; max-height: 100px; text-align: right; flex: 0 0 auto; margin-left: auto;">
                                                             @if ($logoSrc)
                                                                 <a href="{{ route('filament.admin.auth.login') }}"
                                                                     class="cta-button">
                                                                     <img src="{{ $logoSrc }}" alt="Logo Perusahaan"
                                                                         class="company-logo"
-                                                                        style="display: block; max-height: 100px; width: 250px; margin-left: auto;">
+                                                                        @if ($logoWidth && $logoHeight) width="{{ $logoWidth }}" height="{{ $logoHeight }}" @endif
+                                                                        style="display: block; max-width: 250px; max-height: 100px; width: auto; height: auto; object-fit: contain; margin-left: auto;">
                                                                 </a>
                                                             @endif
                                                         </div>

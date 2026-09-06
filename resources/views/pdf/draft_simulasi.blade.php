@@ -207,6 +207,10 @@
         $company = $company ?? \App\Models\Company::first();
 
         $logoSrc = '';
+        $logoWidth = null;
+        $logoHeight = null;
+        $logoMaxWidth = 180;
+        $logoMaxHeight = 80;
         if ($company && $company->logo_url && \Illuminate\Support\Facades\Storage::disk('public')->exists($company->logo_url)) {
             $logoPath = \Illuminate\Support\Facades\Storage::disk('public')->path($company->logo_url);
         } else {
@@ -214,7 +218,16 @@
         }
 
         if (is_string($logoPath) && file_exists($logoPath)) {
-            $logoSrc = 'data:' . mime_content_type($logoPath) . ';base64,' . base64_encode(file_get_contents($logoPath));
+            $logoMime = mime_content_type($logoPath);
+            if ($logoMime) {
+                $logoSrc = 'data:' . $logoMime . ';base64,' . base64_encode(file_get_contents($logoPath));
+            }
+            $logoInfo = @getimagesize($logoPath);
+            if (is_array($logoInfo) && ($logoInfo[0] ?? 0) > 0 && ($logoInfo[1] ?? 0) > 0) {
+                $scale = min($logoMaxWidth / $logoInfo[0], $logoMaxHeight / $logoInfo[1], 1);
+                $logoWidth = (int) round($logoInfo[0] * $scale);
+                $logoHeight = (int) round($logoInfo[1] * $scale);
+            }
         }
 
         $itemsCollection = collect($items ?? []);
@@ -258,7 +271,9 @@
                     </td>
                     <td class="header-right">
                         @if ($logoSrc)
-                            <img src="{{ $logoSrc }}" alt="Logo" style="max-height: 60pt; width: 100pt;">
+                            <img src="{{ $logoSrc }}" alt="Logo"
+                                @if ($logoWidth && $logoHeight) width="{{ $logoWidth }}" height="{{ $logoHeight }}" @endif
+                                style="max-width: 180px; max-height: 80px; width: auto; height: auto;">
                         @endif
                     </td>
                 </tr>

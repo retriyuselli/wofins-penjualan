@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
@@ -66,6 +67,32 @@ class Company extends Model
             ->logOnly(['company_name', 'owner_name', 'email', 'phone'])
             ->setDescriptionForEvent(fn (string $eventName) => "{$eventName}")
             ->useLogName('company');
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function brandCacheKeys(): array
+    {
+        return [
+            'company_name',
+            'company_address',
+            'company_email',
+            'company_phone',
+            'company_logo_url',
+            'company_favicon_url',
+            'company_brand_version',
+            'company_logo_path',
+            'company_favicon_path',
+            'company_login_image_path',
+        ];
+    }
+
+    public static function forgetBrandCache(): void
+    {
+        foreach (self::brandCacheKeys() as $key) {
+            Cache::forget($key);
+        }
     }
 
     public function getFaviconPathAttribute(): string

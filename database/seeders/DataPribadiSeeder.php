@@ -3,17 +3,39 @@
 namespace Database\Seeders;
 
 use App\Models\DataPribadi;
-use Carbon\Carbon;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class DataPribadiSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        $teamMembers = [
+        $created = 0;
+
+        foreach ($this->members() as $data) {
+            $email = $data['email'];
+            $data['foto'] = $this->seedFoto($email);
+            $data['nomor_telepon'] = preg_replace('/^(\+62|0)/', '', (string) $data['nomor_telepon']);
+
+            DataPribadi::updateOrCreate(
+                ['email' => $email],
+                $data
+            );
+
+            $created++;
+        }
+
+        $this->command->info("✅ DataPribadiSeeder: {$created} data pribadi dibuat/diperbarui sesuai form.");
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function members(): array
+    {
+        return [
             [
                 'nama_lengkap' => 'Sarah Wijaya Sari',
                 'email' => 'sarah.wijaya@maknaonline.com',
@@ -24,8 +46,8 @@ class DataPribadiSeeder extends Seeder
                 'alamat' => 'Jl. Sudirman No. 123, Menteng, Jakarta Pusat 10310',
                 'pekerjaan' => 'CEO & Founder',
                 'gaji' => 25000000,
-                'motivasi_kerja' => 'Ingin menciptakan momen pernikahan yang tak terlupakan bagi setiap pasangan. Membangun bisnis yang dapat memberikan dampak positif bagi industri wedding organizer di Indonesia dengan standar internasional.',
-                'pelatihan' => '<p><strong>Pelatihan yang telah diikuti:</strong></p><ul><li>Wedding Planning Certification - International Association of Wedding Planners (2019)</li><li>Luxury Event Management - Singapore Hotel Association (2020)</li><li>Digital Marketing for Wedding Business - Google Digital Garage (2021)</li><li>Leadership & Team Management - Dale Carnegie Indonesia (2022)</li></ul>',
+                'motivasi_kerja' => 'Ingin menciptakan momen pernikahan yang tak terlupakan bagi setiap pasangan dan membangun standar wedding organizer bertaraf internasional.',
+                'pelatihan' => '<p><strong>Pelatihan yang telah diikuti:</strong></p><ul><li>Wedding Planning Certification - IAWP (2019)</li><li>Luxury Event Management - Singapore Hotel Association (2020)</li><li>Digital Marketing for Wedding Business - Google Digital Garage (2021)</li><li>Leadership &amp; Team Management - Dale Carnegie Indonesia (2022)</li></ul>',
             ],
             [
                 'nama_lengkap' => 'Michael Chen Wijaya',
@@ -37,7 +59,7 @@ class DataPribadiSeeder extends Seeder
                 'alamat' => 'Jl. Gatot Subroto No. 456, Kuningan, Jakarta Selatan 12950',
                 'pekerjaan' => 'COO & Co-Founder',
                 'gaji' => 20000000,
-                'motivasi_kerja' => 'Mengoptimalkan operasional perusahaan untuk memberikan layanan terbaik. Fokus pada efisiensi proses dan inovasi teknologi dalam industri wedding organizer.',
+                'motivasi_kerja' => 'Mengoptimalkan operasional perusahaan agar layanan wedding tetap efisien, terukur, dan mudah diikuti tim di lapangan.',
                 'pelatihan' => '<p><strong>Pelatihan yang telah diikuti:</strong></p><ul><li>Operations Management Certification - PMI Indonesia (2020)</li><li>Financial Management for SME - LPPI (2021)</li><li>Project Management Professional (PMP) - PMI (2021)</li><li>Business Process Optimization - McKinsey Academy (2022)</li></ul>',
             ],
             [
@@ -50,8 +72,8 @@ class DataPribadiSeeder extends Seeder
                 'alamat' => 'Jl. Kemang Raya No. 789, Kemang, Jakarta Selatan 12560',
                 'pekerjaan' => 'Senior Account Manager',
                 'gaji' => 12000000,
-                'motivasi_kerja' => 'Membangun hubungan yang kuat dengan klien dan memastikan setiap detail pernikahan terlaksana dengan sempurna. Menjadi konsultan terpercaya untuk mewujudkan impian pernikahan klien.',
-                'pelatihan' => '<p><strong>Pelatihan yang telah diikuti:</strong></p><ul><li>Customer Relationship Management - Salesforce Trailhead (2021)</li><li>Advanced Wedding Consultation Techniques - WeddingWire Academy (2021)</li><li>Luxury Service Excellence - Ritz Carlton Leadership Center (2022)</li><li>Conflict Resolution & Negotiation - Harvard Business School Online (2023)</li></ul>',
+                'motivasi_kerja' => 'Membangun hubungan yang kuat dengan klien dan memastikan setiap detail pernikahan terlaksana sesuai janji di simulasi.',
+                'pelatihan' => '<p><strong>Pelatihan yang telah diikuti:</strong></p><ul><li>Customer Relationship Management - Salesforce Trailhead (2021)</li><li>Advanced Wedding Consultation - WeddingWire Academy (2021)</li><li>Luxury Service Excellence - Ritz Carlton Leadership Center (2022)</li><li>Conflict Resolution &amp; Negotiation - Harvard Business School Online (2023)</li></ul>',
             ],
             [
                 'nama_lengkap' => 'David Pranata Kusuma',
@@ -63,8 +85,8 @@ class DataPribadiSeeder extends Seeder
                 'alamat' => 'Jl. Senopati No. 321, Kebayoran Baru, Jakarta Selatan 12190',
                 'pekerjaan' => 'Account Manager',
                 'gaji' => 10000000,
-                'motivasi_kerja' => 'Mengembangkan skill dalam menangani berbagai tipe klien dan event. Terus belajar untuk menjadi wedding consultant yang profesional dan dapat diandalkan.',
-                'pelatihan' => '<p><strong>Pelatihan yang telah diikuti:</strong></p><ul><li>Wedding Planning Fundamentals - Wedding Planning Institute (2021)</li><li>Sales Techniques for Service Industry - Dale Carnegie (2022)</li><li>Event Budgeting & Cost Management - Event Management Institute (2022)</li><li>Digital Portfolio Management - Adobe Creative Suite (2023)</li></ul>',
+                'motivasi_kerja' => 'Terus belajar menangani berbagai tipe klien agar menjadi wedding consultant yang bisa diandalkan dari survey hingga hari H.',
+                'pelatihan' => '<p><strong>Pelatihan yang telah diikuti:</strong></p><ul><li>Wedding Planning Fundamentals - Wedding Planning Institute (2021)</li><li>Sales Techniques for Service Industry - Dale Carnegie (2022)</li><li>Event Budgeting &amp; Cost Management (2022)</li><li>Digital Portfolio Management - Adobe Creative Suite (2023)</li></ul>',
             ],
             [
                 'nama_lengkap' => 'Luna Kartika Sari',
@@ -76,8 +98,8 @@ class DataPribadiSeeder extends Seeder
                 'alamat' => 'Jl. Pejaten Raya No. 654, Pasar Minggu, Jakarta Selatan 12520',
                 'pekerjaan' => 'Senior Event Manager',
                 'gaji' => 13000000,
-                'motivasi_kerja' => 'Memastikan eksekusi event berjalan sempurna sesuai timeline. Mengkoordinasikan semua vendor dan tim untuk menghasilkan pernikahan yang luar biasa dan memorable.',
-                'pelatihan' => '<p><strong>Pelatihan yang telah diikuti:</strong></p><ul><li>Event Coordination Mastery - International Live Events Association (2020)</li><li>Vendor Management Excellence - Event Industry Council (2021)</li><li>Crisis Management in Events - Event Safety Alliance (2021)</li><li>Advanced Timeline Management - Wedding MBA (2022)</li></ul>',
+                'motivasi_kerja' => 'Memastikan eksekusi event sesuai rundown, termasuk koordinasi vendor, crew, dan cadangan cuaca.',
+                'pelatihan' => '<p><strong>Pelatihan yang telah diikuti:</strong></p><ul><li>Event Coordination Mastery - ILEA (2020)</li><li>Vendor Management Excellence (2021)</li><li>Crisis Management in Events (2021)</li><li>Advanced Timeline Management - Wedding MBA (2022)</li></ul>',
             ],
             [
                 'nama_lengkap' => 'Agus Hermawan Saputra',
@@ -89,8 +111,8 @@ class DataPribadiSeeder extends Seeder
                 'alamat' => 'Jl. Fatmawati No. 987, Cilandak, Jakarta Selatan 12430',
                 'pekerjaan' => 'Event Manager',
                 'gaji' => 11000000,
-                'motivasi_kerja' => 'Spesialisasi dalam outdoor wedding dan destination wedding. Senang menghadapi tantangan logistik yang kompleks dan menciptakan pengalaman unik untuk setiap pasangan.',
-                'pelatihan' => '<p><strong>Pelatihan yang telah diikuti:</strong></p><ul><li>Outdoor Event Management - Adventure Wedding Association (2021)</li><li>Destination Wedding Planning - International Association of Destination Wedding Professionals (2021)</li><li>Weather Contingency Planning - Event Weather Services (2022)</li><li>Logistics Coordination - Supply Chain Management Institute (2022)</li></ul>',
+                'motivasi_kerja' => 'Fokus pada outdoor dan destination wedding, termasuk logistik venue, tenda, dan lighting lapangan.',
+                'pelatihan' => '<p><strong>Pelatihan yang telah diikuti:</strong></p><ul><li>Outdoor Event Management (2021)</li><li>Destination Wedding Planning (2021)</li><li>Weather Contingency Planning (2022)</li><li>Logistics Coordination (2022)</li></ul>',
             ],
             [
                 'nama_lengkap' => 'Sinta Maharani Putri',
@@ -102,8 +124,8 @@ class DataPribadiSeeder extends Seeder
                 'alamat' => 'Jl. Radio Dalam No. 147, Kebayoran Baru, Jakarta Selatan 12140',
                 'pekerjaan' => 'Finance Manager',
                 'gaji' => 9500000,
-                'motivasi_kerja' => 'Mengelola keuangan perusahaan dengan transparan dan akurat. Membantu tim dalam perencanaan budget event dan optimalisasi profit margin setiap project.',
-                'pelatihan' => '<p><strong>Pelatihan yang telah diikuti:</strong></p><ul><li>Financial Management for Creative Industry - Indonesian Institute of Accountants (2021)</li><li>Event Budgeting & Financial Planning - Event Financial Management (2022)</li><li>Tax Planning for SME - Tax Consultant Association (2022)</li><li>Digital Accounting Systems - Accurate Software Training (2023)</li></ul>',
+                'motivasi_kerja' => 'Mengelola fee, budget event, dan laporan keuangan agar setiap proyek tetap transparan dan profitable.',
+                'pelatihan' => '<p><strong>Pelatihan yang telah diikuti:</strong></p><ul><li>Financial Management for Creative Industry (2021)</li><li>Event Budgeting &amp; Financial Planning (2022)</li><li>Tax Planning for SME (2022)</li><li>Digital Accounting Systems - Accurate (2023)</li></ul>',
             ],
             [
                 'nama_lengkap' => 'Eko Prasetyo Nugroho',
@@ -115,8 +137,8 @@ class DataPribadiSeeder extends Seeder
                 'alamat' => 'Jl. Cilandak KKO No. 258, Cilandak, Jakarta Selatan 12560',
                 'pekerjaan' => 'Senior Crew & Setup Coordinator',
                 'gaji' => 7500000,
-                'motivasi_kerja' => 'Ahli dalam setup dekorasi dan koordinasi teknis. Memastikan semua elemen visual dan teknis wedding terpasang dengan sempurna sesuai konsep yang diinginkan.',
-                'pelatihan' => '<p><strong>Pelatihan yang telah diikuti:</strong></p><ul><li>Event Setup & Production - Indonesian Event Organizer Association (2022)</li><li>Floral Design & Decoration - Jakarta Floral Academy (2022)</li><li>Audio Visual Technical Training - Sound & Lighting Institute (2023)</li><li>Safety & Security in Events - Event Safety Certification (2023)</li></ul>',
+                'motivasi_kerja' => 'Memastikan dekorasi, sound, dan teknis terpasang sesuai konsep, dengan setup yang aman dan rapi.',
+                'pelatihan' => '<p><strong>Pelatihan yang telah diikuti:</strong></p><ul><li>Event Setup &amp; Production (2022)</li><li>Floral Design &amp; Decoration (2022)</li><li>Audio Visual Technical Training (2023)</li><li>Safety &amp; Security in Events (2023)</li></ul>',
             ],
             [
                 'nama_lengkap' => 'Maya Indira Sari',
@@ -128,8 +150,8 @@ class DataPribadiSeeder extends Seeder
                 'alamat' => 'Jl. Ampera Raya No. 369, Kemang, Jakarta Selatan 12550',
                 'pekerjaan' => 'Crew & Catering Coordinator',
                 'gaji' => 6500000,
-                'motivasi_kerja' => 'Spesialis koordinasi catering dan vendor makanan. Memastikan kualitas makanan dan service yang excellent untuk kepuasan tamu undangan.',
-                'pelatihan' => '<p><strong>Pelatihan yang telah diikuti:</strong></p><ul><li>Food & Beverage Service Excellence - Hotel & Restaurant Association (2022)</li><li>Catering Coordination & Quality Control - Indonesian Catering Association (2022)</li><li>Halal Food Certification Management - MUI Training Center (2023)</li><li>Customer Service in F&B - Service Excellence Academy (2023)</li></ul>',
+                'motivasi_kerja' => 'Menjaga kualitas catering, alur service, dan koordinasi vendor makanan agar tamu terlayani dengan baik.',
+                'pelatihan' => '<p><strong>Pelatihan yang telah diikuti:</strong></p><ul><li>Food &amp; Beverage Service Excellence (2022)</li><li>Catering Coordination &amp; Quality Control (2022)</li><li>Halal Food Certification Management (2023)</li><li>Customer Service in F&amp;B (2023)</li></ul>',
             ],
             [
                 'nama_lengkap' => 'Rizki Aditya Pratama',
@@ -141,21 +163,33 @@ class DataPribadiSeeder extends Seeder
                 'alamat' => 'Jl. TB Simatupang No. 123, Cilandak, Jakarta Selatan 12430',
                 'pekerjaan' => 'Junior Crew & Digital Content Creator',
                 'gaji' => 5500000,
-                'motivasi_kerja' => 'Mengembangkan skill di bidang wedding industry sambil mengasah kemampuan content creation. Ingin menjadi bagian dari tim yang menciptakan momen berharga untuk setiap pasangan.',
-                'pelatihan' => '<p><strong>Pelatihan yang telah diikuti:</strong></p><ul><li>Basic Wedding Coordination - Wedding Planner Training Institute (2023)</li><li>Social Media Content Creation - Digital Marketing Institute (2023)</li><li>Photography & Videography Basics - Visual Arts Academy (2023)</li><li>Event Documentation - Professional Event Photographer Association (2023)</li></ul>',
+                'motivasi_kerja' => 'Belajar operasional wedding sambil mendokumentasikan momen tim dan klien untuk kebutuhan konten.',
+                'pelatihan' => '<p><strong>Pelatihan yang telah diikuti:</strong></p><ul><li>Basic Wedding Coordination (2023)</li><li>Social Media Content Creation (2023)</li><li>Photography &amp; Videography Basics (2023)</li><li>Event Documentation (2023)</li></ul>',
             ],
         ];
+    }
 
-        foreach ($teamMembers as $memberData) {
-            // Convert string dates to Carbon instances
-            $memberData['tanggal_lahir'] = Carbon::parse($memberData['tanggal_lahir']);
-            $memberData['tanggal_mulai_gabung'] = Carbon::parse($memberData['tanggal_mulai_gabung']);
+    private function seedFoto(string $email): ?string
+    {
+        $sources = [
+            public_path('images/logomki.png'),
+            public_path('images/logo.png'),
+            public_path('logo.png'),
+        ];
 
-            DataPribadi::firstOrCreate([
-                'email' => $memberData['email'],
-            ], $memberData);
+        $source = collect($sources)->first(fn (string $path) => File::exists($path));
+        if (! $source) {
+            return null;
         }
 
-        $this->command->info('✅ DataPribadiSeeder completed! Created '.count($teamMembers).' team member profiles.');
+        $extension = strtolower(pathinfo($source, PATHINFO_EXTENSION) ?: 'png');
+        if (! in_array($extension, ['jpg', 'jpeg', 'png', 'gif'], true)) {
+            $extension = 'png';
+        }
+
+        $path = 'data-pribadi-fotos/'.Str::slug(Str::before($email, '@')).'.'.$extension;
+        Storage::disk('public')->put($path, File::get($source));
+
+        return $path;
     }
 }

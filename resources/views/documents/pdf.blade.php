@@ -211,26 +211,45 @@
         <table style="width: 100%; margin-bottom: 1px; padding-bottom: 3px;">
             <tr>
                 <td style="line-height: 1; text-align: left;">
-                    <div style="font-size: 14px; font-weight: bold; text-transform: uppercase;">{{ strtoupper($companyName ?? config('app.name')) }}</div>
+                    <div style="font-size: 14px; font-weight: bold; text-transform: uppercase;">{{ strtoupper($company?->company_name ?? $companyName ?? config('app.name')) }}</div>
                     <div style="font-size: 12px;">
-                        Alamat : Jln. Sintraman Jaya, No. 2148, Sekip Jaya, Palembang<br>
-                        No. Tlp : +62 822-9796-2600<br>
-                        Email : maknawedding@gmail.com
+                        Alamat : {{ $company?->address ?? $companyAddress ?? '-' }}<br>
+                        No. Tlp : {{ $company?->phone ?? $companyPhone ?? '-' }}<br>
+                        Email : {{ $company?->email ?? $companyEmail ?? '-' }}
                     </div>
                 </td>
                 <td style="width: 40%; text-align: right; vertical-align: middle;">
                     @php
-                        $logoPath = public_path(config('invoice.logo', 'images/logo.png'));
-                        if (file_exists($logoPath)) {
-                            $logoType = pathinfo($logoPath, PATHINFO_EXTENSION);
-                            $logoData = file_get_contents($logoPath);
-                            $logoBase64 = 'data:image/' . $logoType . ';base64,' . base64_encode($logoData);
+                        $company = $company ?? \App\Models\Company::query()->first();
+                        $logoSrc = '';
+                        $logoWidth = null;
+                        $logoHeight = null;
+                        $logoMaxWidth = 160;
+                        $logoMaxHeight = 50;
+
+                        if ($company?->logo_url && \Illuminate\Support\Facades\Storage::disk('public')->exists($company->logo_url)) {
+                            $logoPath = \Illuminate\Support\Facades\Storage::disk('public')->path($company->logo_url);
                         } else {
-                            $logoBase64 = '';
+                            $logoPath = public_path('images/logomki.png');
+                        }
+
+                        if (is_string($logoPath) && file_exists($logoPath)) {
+                            $logoMime = mime_content_type($logoPath) ?: 'image/png';
+                            $logoSrc = 'data:' . $logoMime . ';base64,' . base64_encode(file_get_contents($logoPath));
+                            $logoInfo = @getimagesize($logoPath);
+                            if (is_array($logoInfo) && ($logoInfo[0] ?? 0) > 0 && ($logoInfo[1] ?? 0) > 0) {
+                                $scale = min($logoMaxWidth / $logoInfo[0], $logoMaxHeight / $logoInfo[1], 1);
+                                $logoWidth = (int) round($logoInfo[0] * $scale);
+                                $logoHeight = (int) round($logoInfo[1] * $scale);
+                            }
                         }
                     @endphp
-                    @if ($logoBase64)
-                        <img src="{{ $logoBase64 }}" alt="Company Logo" style="max-height: 50px; width: auto;">
+                    @if ($logoSrc)
+                        <img src="{{ $logoSrc }}" alt="Company Logo"
+                            @if ($logoWidth && $logoHeight)
+                                width="{{ $logoWidth }}" height="{{ $logoHeight }}"
+                            @endif
+                            style="max-height: {{ $logoMaxHeight }}px; width: auto;">
                     @endif
                 </td>
             </tr>

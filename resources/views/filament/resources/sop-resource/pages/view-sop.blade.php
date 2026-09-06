@@ -212,7 +212,7 @@
                                         </p>
                                     </div>
                                     <div class="ml-2">
-                                        <a href="{{ Storage::url($document) }}" 
+                                        <a href="{{ Storage::disk('public')->url($document) }}" 
                                            target="_blank"
                                            class="inline-flex items-center px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors">
                                             <x-heroicon-o-arrow-down-tray class="w-3 h-3 mr-1" />

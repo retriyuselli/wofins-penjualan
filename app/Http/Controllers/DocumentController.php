@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Company;
 use App\Models\Document;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Gate;
@@ -13,8 +14,13 @@ class DocumentController extends Controller
     {
         Gate::authorize('view', $record);
 
-        $filename = 'document-'.Str::slug($record->document_number).'.pdf';
-        $pdf = Pdf::loadView('documents.pdf', ['record' => $record]);
+        $record->load(['category', 'recipientsList', 'creator.activeEmployee']);
+
+        $filename = 'document-'.Str::slug($record->document_number ?: $record->title).'.pdf';
+        $pdf = Pdf::loadView('documents.pdf', [
+            'record' => $record,
+            'company' => Company::query()->first(),
+        ]);
 
         return $pdf->stream($filename);
     }

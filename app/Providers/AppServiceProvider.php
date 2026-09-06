@@ -11,6 +11,7 @@ use App\Models\LeaveRequest;
 use App\Models\Order;
 use App\Models\User;
 use App\Observers\BankStatementObserver;
+use App\Observers\CompanyObserver;
 use App\Policies\BankReconciliationItemPolicy;
 use App\Observers\DocumentObserver;
 use App\Observers\LeaveRequestObserver;
@@ -70,6 +71,8 @@ class AppServiceProvider extends ServiceProvider
 
         // Register BankStatement Observer for tracking last edited by
         BankStatement::observe(BankStatementObserver::class);
+
+        Company::observe(CompanyObserver::class);
 
         Gate::policy(BankReconciliationItem::class, BankReconciliationItemPolicy::class);
 
