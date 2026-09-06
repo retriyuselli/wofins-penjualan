@@ -206,4 +206,11 @@
             </div>
         </div>
     @endif
+
+    <div class="px-5 py-3 border-t text-center" style="border-color:#e6e2d9;">
+        <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold tracking-wide"
+            style="background: rgba(201,162,39,0.16); color:#0b1f3a;">
+            Versi 2.0
+        </span>
+    </div>
 </div>
