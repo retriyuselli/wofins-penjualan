@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
@@ -57,6 +58,9 @@ class Employee extends Model
                 : (string) ($employee->name ?: 'karyawan');
             $employee->slug = static::generateUniqueSlug($base, (int) $employee->id);
         });
+
+        static::deleted(fn () => Cache::forget('nav:employees:active_count'));
+        static::restored(fn () => Cache::forget('nav:employees:active_count'));
     }
 
     public function getActivitylogOptions(): LogOptions

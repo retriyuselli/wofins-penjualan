@@ -10,6 +10,10 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ForceDeleteAction;
+use Filament\Actions\ForceDeleteBulkAction;
+use Filament\Actions\RestoreAction;
+use Filament\Actions\RestoreBulkAction;
 use Filament\Actions\ViewAction;
 use Filament\Support\Enums\FontWeight;
 use Filament\Tables\Columns\IconColumn;
@@ -17,6 +21,7 @@ use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
+use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -113,6 +118,12 @@ class EmployeesTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                TrashedFilter::make()
+                    ->label('Data terhapus')
+                    ->placeholder('Tanpa yang dihapus')
+                    ->trueLabel('Termasuk yang dihapus')
+                    ->falseLabel('Hanya yang dihapus'),
+
                 SelectFilter::make('position')
                     ->options([
                         'Account Manager' => 'Account Manager',
@@ -148,12 +159,38 @@ class EmployeesTable
                 ActionGroup::make([
                     ViewAction::make(),
                     EditAction::make(),
-                    DeleteAction::make(),
+                    RestoreAction::make()
+                        ->successNotificationTitle('Karyawan berhasil dipulihkan'),
+                    DeleteAction::make()
+                        ->requiresConfirmation()
+                        ->modalHeading('Hapus Karyawan')
+                        ->modalDescription('Data akan dipindahkan ke trash dan dapat dipulihkan.')
+                        ->modalSubmitActionLabel('Ya, Hapus')
+                        ->successNotificationTitle('Karyawan berhasil dihapus'),
+                    ForceDeleteAction::make()
+                        ->requiresConfirmation()
+                        ->modalHeading('Hapus Permanen Karyawan')
+                        ->modalDescription('Data tidak dapat dipulihkan!')
+                        ->modalSubmitActionLabel('Ya, Hapus Permanen')
+                        ->successNotificationTitle('Karyawan berhasil dihapus permanen'),
                 ]),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    RestoreBulkAction::make()
+                        ->successNotificationTitle('Karyawan terpilih berhasil dipulihkan'),
+                    DeleteBulkAction::make()
+                        ->requiresConfirmation()
+                        ->modalHeading('Hapus Karyawan Terpilih')
+                        ->modalDescription('Data akan dipindahkan ke trash dan dapat dipulihkan.')
+                        ->modalSubmitActionLabel('Ya, Hapus Semua')
+                        ->successNotificationTitle('Karyawan terpilih berhasil dihapus'),
+                    ForceDeleteBulkAction::make()
+                        ->requiresConfirmation()
+                        ->modalHeading('Hapus Permanen Karyawan Terpilih')
+                        ->modalDescription('Data tidak dapat dipulihkan!')
+                        ->modalSubmitActionLabel('Ya, Hapus Permanen Semua')
+                        ->successNotificationTitle('Karyawan terpilih berhasil dihapus permanen'),
                 ]),
             ])
             ->defaultSort('date_of_join', 'desc')
