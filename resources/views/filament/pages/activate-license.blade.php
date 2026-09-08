@@ -6,8 +6,8 @@
         $days = $status['days_remaining'] ?? null;
     @endphp
 
-    <div class="grid gap-6 lg:grid-cols-2">
-        <div class="rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
+    <div class="grid gap-6 xl:grid-cols-3">
+        <div class="rounded-xl bg-white p-6 shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10 xl:col-span-2">
             <h2 class="text-base font-semibold text-gray-950 dark:text-white">Item Purchase Code</h2>
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
                 Tempelkan kode dari maknafinance.id setelah pembayaran. Tanggal mulai dan selesai diisi otomatis dari server, tidak bisa diubah di sini.
@@ -21,7 +21,7 @@
                         type="text"
                         wire:model="code"
                         placeholder="ac15dc7f-6067-4f4a-b294-4344e44fcf59"
-                        class="w-full rounded-lg border-gray-300 font-mono text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                        class="w-full rounded-lg border-gray-300 px-3 py-2.5 font-mono text-base tracking-wide shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
                         autocomplete="off"
                     />
                     @error('code')
