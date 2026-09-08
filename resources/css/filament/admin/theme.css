@@ -31,14 +31,14 @@
     flex-wrap: nowrap !important;
     flex-shrink: 0;
     align-items: center !important;
-    gap: 0.35rem;
+    gap: 0.25rem;
     width: max-content;
     max-width: none;
     overflow: visible;
     border-radius: 0.5rem;
-    padding: 0.25rem 0.5rem;
-    font-size: 0.75rem;
-    font-weight: 600;
+    padding: 0.2rem 0.4rem;
+    font-size: 0.625rem;
+    font-weight: 500;
     line-height: 1;
     white-space: nowrap;
     text-decoration: none;
@@ -47,27 +47,9 @@
 .fi-license-topbar svg,
 .fi-license-topbar .fi-icon {
     display: block;
-    width: 0.875rem !important;
-    height: 0.875rem !important;
+    width: 0.75rem !important;
+    height: 0.75rem !important;
     flex-shrink: 0;
-}
-
-.fi-license-topbar-label-long {
-    display: none;
-}
-
-@media (min-width: 640px) {
-    .fi-license-topbar {
-        font-size: 0.75rem;
-    }
-
-    .fi-license-topbar-label-short {
-        display: none;
-    }
-
-    .fi-license-topbar-label-long {
-        display: inline;
-    }
 }
 
 @media (max-width: 639px) {

@@ -13,27 +13,22 @@
 
         if (! $license) {
             $label = 'Belum aktif';
-            $short = 'Aktifkan';
             $tone = 'neutral';
             $title = 'Aplikasi belum diaktivasi';
         } elseif ($days === null) {
             $label = $end ?: 'Lisensi';
-            $short = $label;
             $tone = 'neutral';
             $title = 'Masa berlaku';
         } elseif ($days < 0) {
-            $label = 'Habis '.$end;
-            $short = 'Habis';
+            $label = 'Habis';
             $tone = 'danger';
             $title = 'Masa berlangganan telah berakhir pada '.$end;
         } elseif ($days <= 30) {
             $label = 'Sisa '.$days.' hari';
-            $short = $days.' hr';
             $tone = 'warning';
             $title = 'Masa berlaku sampai '.$end;
         } else {
             $label = $end;
-            $short = $license->ends_at?->format('d M');
             $tone = 'neutral';
             $title = 'Masa berlaku sampai '.$end.' (sisa '.$days.' hari)';
         }
@@ -51,7 +46,6 @@
         class="fi-license-topbar {{ $toneClass }}"
     >
         <x-filament::icon icon="heroicon-m-calendar-days" class="h-3.5 w-3.5 shrink-0" />
-        <span class="fi-license-topbar-label-short">{{ $short }}</span>
-        <span class="fi-license-topbar-label-long">{{ $label }}</span>
+        <span>{{ $label }}</span>
     </a>
 @endif
