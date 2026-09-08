@@ -44,8 +44,11 @@
         href="{{ $url }}"
         title="{{ $title }}"
         class="fi-license-topbar {{ $toneClass }}"
+        style="display: inline-flex; flex-direction: row; flex-wrap: nowrap; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 6px; font-size: 10px; font-weight: 500; line-height: 1; white-space: nowrap; text-decoration: none; width: max-content;"
     >
-        <x-filament::icon icon="heroicon-m-calendar-days" class="h-3.5 w-3.5 shrink-0" />
-        <span>{{ $label }}</span>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" style="width: 11px; height: 11px; flex: 0 0 auto; display: block;">
+            <path fill-rule="evenodd" d="M5.75 2a.75.75 0 0 1 .75.75V4h7V2.75a.75.75 0 0 1 1.5 0V4h.25A2.75 2.75 0 0 1 18 6.75v8.5A2.75 2.75 0 0 1 15.25 18H4.75A2.75 2.75 0 0 1 2 15.25v-8.5A2.75 2.75 0 0 1 4.75 4H5V2.75A.75.75 0 0 1 5.75 2Zm-1 5.5c-.69 0-1.25.56-1.25 1.25v6.5c0 .69.56 1.25 1.25 1.25h10.5c.69 0 1.25-.56 1.25-1.25v-6.5c0-.69-.56-1.25-1.25-1.25H4.75Z" clip-rule="evenodd" />
+        </svg>
+        <span style="font-size: 10px; line-height: 1;">{{ $label }}</span>
     </a>
 @endif
