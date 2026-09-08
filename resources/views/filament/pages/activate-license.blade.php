@@ -83,7 +83,7 @@
 
             <p class="mt-6 text-sm text-gray-500">
                 Perpanjang di
-                <a href="{{ config('wofins.license.contact_url') }}" target="_blank" class="text-primary-600 hover:underline">maknafinance.id</a>
+                <a href="{{ config('wofins.license.contact_url') }}" target="_blank" class="text-primary-600 hover:underline">wofins.id</a>
                 atau
                 <a href="{{ config('wofins.license.contact_whatsapp') }}" target="_blank" class="text-primary-600 hover:underline">WhatsApp</a>.
             </p>

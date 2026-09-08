@@ -14,7 +14,7 @@
             (sisa {{ $days }} hari).
             <a href="{{ \App\Filament\Pages\ActivateLicense::getUrl() }}" class="font-semibold underline">Lihat lisensi</a>
             atau
-            <a href="{{ config('wofins.license.contact_url') }}" target="_blank" class="font-semibold underline">perpanjang di maknafinance.id</a>.
+            <a href="{{ config('wofins.license.contact_url') }}" target="_blank" class="font-semibold underline">perpanjang di wofins.id</a>.
         </div>
     </div>
 @endif
