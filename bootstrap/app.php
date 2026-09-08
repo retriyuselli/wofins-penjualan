@@ -28,6 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'project.access' => \App\Http\Middleware\CheckProjectAccess::class,
             'no-store' => \App\Http\Middleware\NoStoreResponse::class,
             'super-admin' => \App\Http\Middleware\EnsureSuperAdmin::class,
+            'app.license' => \App\Http\Middleware\EnsureAppLicense::class,
             'public-form' => \App\Http\Middleware\PublicFormSecurityHeaders::class,
         ]);
 

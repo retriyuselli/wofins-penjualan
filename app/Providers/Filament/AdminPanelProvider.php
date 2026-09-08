@@ -83,6 +83,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->renderHook('panels::body.end', fn () => view('filament.inactivity-redirect'))
+            ->renderHook('panels::content.start', fn () => view('filament.license-banner'))
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->middleware([
                 EncryptCookies::class,
@@ -98,6 +99,7 @@ class AdminPanelProvider extends PanelProvider
             ->authMiddleware([
                 RedirectUnauthenticatedToAppUrl::class,
                 Authenticate::class,
+                \App\Http\Middleware\EnsureAppLicense::class,
             ])
             ->plugins([
                 FilamentShieldPlugin::make()
