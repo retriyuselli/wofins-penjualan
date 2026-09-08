@@ -27,7 +27,7 @@ class AppLicenseService
     /**
      * @return array{valid: bool, status: string, message: string, license: ?AppLicense, days_remaining: ?int}
      */
-    public function status(bool $reverify = true): array
+    public function status(bool $reverify = true, bool $force = false): array
     {
         if (! $this->isEnabled()) {
             return [
@@ -52,7 +52,7 @@ class AppLicenseService
         }
 
         if ($reverify) {
-            $license = $this->reverifyIfStale($license) ?? $license;
+            $license = $this->reverifyIfStale($license, $force) ?? $license;
         }
 
         if (in_array($license->status, ['expired', 'revoked', 'invalid', 'domain_mismatch'], true)) {
@@ -141,13 +141,15 @@ class AppLicenseService
         ];
     }
 
-    private function reverifyIfStale(AppLicense $license): ?AppLicense
+    private function reverifyIfStale(AppLicense $license, bool $force = false): ?AppLicense
     {
-        $hours = max(1, (int) config('wofins.license.reverify_hours', 6));
-        $stale = ! $license->last_verified_at || $license->last_verified_at->lt(now()->subHours($hours));
+        if (! $force) {
+            $hours = max(1, (int) config('wofins.license.reverify_hours', 6));
+            $stale = ! $license->last_verified_at || $license->last_verified_at->lt(now()->subHours($hours));
 
-        if (! $stale) {
-            return $license;
+            if (! $stale) {
+                return $license;
+            }
         }
 
         try {

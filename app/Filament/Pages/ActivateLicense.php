@@ -29,7 +29,9 @@ class ActivateLicense extends Page
 
     public function mount(): void
     {
-        $this->code = (string) (app(AppLicenseService::class)->current()?->code ?? '');
+        $service = app(AppLicenseService::class);
+        $this->code = (string) ($service->current()?->code ?? '');
+        $service->status(reverify: true, force: true);
     }
 
     /**
