@@ -84,7 +84,7 @@ class AdminPanelProvider extends PanelProvider
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->renderHook('panels::body.end', fn () => view('filament.inactivity-redirect'))
             ->renderHook('panels::body.end', fn () => view('filament.license-banner'))
-            ->renderHook('panels::user-menu.before', fn () => view('filament.license-topbar'))
+            ->renderHook('panels::topbar.end', fn () => view('filament.license-topbar'))
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->middleware([
                 EncryptCookies::class,
