@@ -6,6 +6,7 @@ use App\Models\Document;
 use App\Models\DocumentAttachment;
 use App\Models\DocumentCategory;
 use App\Models\User;
+use App\Support\DocumentNumber;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Storage;
@@ -193,20 +194,7 @@ class DocumentSeeder extends Seeder
 
     private function documentNumber(DocumentCategory $category, int $seq): string
     {
-        $format = $category->format_number ?? '{SEQ}/{CAT}/MKI/{ROMAN_MONTH}/{Y}';
-
-        return str_replace(
-            ['{SEQ}', '{Y}', '{M}', '{ROMAN_MONTH}', '{CAT}', '{DEPT}'],
-            [
-                str_pad((string) $seq, 3, '0', STR_PAD_LEFT),
-                (string) now()->year,
-                now()->format('m'),
-                $this->getRomanMonth((int) now()->month),
-                $category->code ?? 'DOC',
-                'GEN',
-            ],
-            $format
-        );
+        return DocumentNumber::format($category, $seq);
     }
 
     /**
@@ -253,15 +241,5 @@ HTML;
             'mime_type' => 'application/pdf',
             'file_size' => Storage::disk('public')->size($path),
         ]);
-    }
-
-    private function getRomanMonth(int $month): string
-    {
-        $map = [
-            1 => 'I', 2 => 'II', 3 => 'III', 4 => 'IV', 5 => 'V', 6 => 'VI',
-            7 => 'VII', 8 => 'VIII', 9 => 'IX', 10 => 'X', 11 => 'XI', 12 => 'XII',
-        ];
-
-        return $map[$month] ?? 'X';
     }
 }

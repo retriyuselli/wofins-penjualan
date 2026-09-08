@@ -61,6 +61,7 @@ class DocumentForm
                                                 TextInput::make('document_number')
                                                     ->label('Document Number')
                                                     ->placeholder('Auto-generated')
+                                                    ->helperText('Otomatis: nomor urut / kode kategori / inisial WO (Companies) / bulan Romawi / tahun.')
                                                     ->disabled()
                                                     ->dehydrated(false),
                                                 Toggle::make('use_digital_signature')

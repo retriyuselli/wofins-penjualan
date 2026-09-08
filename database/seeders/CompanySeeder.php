@@ -22,6 +22,8 @@ class CompanySeeder extends Seeder
                 'business_license' => 'SIUP-2020-001',
                 'owner_name' => 'Rama Dhona Utama',
                 'jabatan_owner' => 'Direktur Utama',
+                'inisial_wo' => 'MKI',
+                'inisial_kontak' => 'KKP',
                 'legal_entity_type' => 'PT',
                 'established_year' => 2015,
                 'employee_count' => 25,

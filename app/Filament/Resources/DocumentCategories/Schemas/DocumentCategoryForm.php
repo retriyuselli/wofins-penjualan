@@ -30,7 +30,8 @@ class DocumentCategoryForm
                             ->required(),
                         TextInput::make('format_number')
                             ->label('Numbering Format')
-                            ->placeholder('e.g., {SEQ}/{CAT}/MKI/{ROMAN_MONTH}/{Y}'),
+                            ->placeholder('e.g., {SEQ}/{CAT}/{WO}/{ROMAN_MONTH}/{Y}')
+                            ->helperText('{SEQ} nomor urut, {CAT} kode kategori, {WO} inisial WO dari Companies, {ROMAN_MONTH} bulan Romawi, {Y} tahun.'),
                         Select::make('parent_id')
                             ->relationship('parent', 'name')
                             ->searchable()
