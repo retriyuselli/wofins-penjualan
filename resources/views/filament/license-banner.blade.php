@@ -28,54 +28,50 @@
                 this.open = false
             }
         }"
-        x-cloak
         x-on:keydown.escape.window="open && dismiss()"
     >
-        <div
-            x-show="open"
-            x-transition.opacity
-            class="fi-license-notice-overlay fixed inset-0 z-[90] flex items-center justify-center p-4 sm:p-6"
-            style="display: none;"
-        >
+        <template x-teleport="body">
             <div
-                class="absolute inset-0 bg-gray-950/50 dark:bg-gray-950/75"
-                x-on:click="dismiss()"
-            ></div>
-
-            <div
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="license-notice-title"
-                class="relative w-full max-w-lg rounded-xl bg-white p-6 shadow-xl ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10"
+                x-show="open"
+                x-cloak
+                x-transition.opacity.duration.150ms
+                role="presentation"
+                style="position: fixed; inset: 0; z-index: 80; display: flex; align-items: center; justify-content: center; padding: 1rem;"
             >
-                <div class="flex items-start gap-4">
-                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-warning-50 text-warning-600 dark:bg-warning-400/10 dark:text-warning-400">
-                        <x-filament::icon icon="heroicon-o-exclamation-triangle" class="h-5 w-5" />
-                    </div>
-                    <div class="min-w-0 flex-1">
-                        <h2 id="license-notice-title" class="text-base font-semibold text-gray-950 dark:text-white">
-                            Masa berlangganan hampir berakhir
-                        </h2>
-                        <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                            WOFINS berakhir
-                            <strong class="font-semibold text-gray-950 dark:text-white">{{ $license->ends_at?->translatedFormat('d M Y') }}</strong>
-                            (sisa {{ $days }} hari). Perpanjang agar admin tetap bisa dipakai.
-                        </p>
-                    </div>
-                </div>
+                <div
+                    style="position: absolute; inset: 0; background: rgba(3, 7, 18, 0.5);"
+                    x-on:click="dismiss()"
+                ></div>
 
-                <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-                    <x-filament::button color="gray" x-on:click="dismiss()">
-                        Mengerti
-                    </x-filament::button>
-                    <x-filament::button color="gray" tag="a" :href="$licenseUrl" x-on:click="dismiss()">
-                        Lihat lisensi
-                    </x-filament::button>
-                    <x-filament::button tag="a" :href="$contactUrl" target="_blank" x-on:click="dismiss()">
-                        Perpanjang di wofins.id
-                    </x-filament::button>
+                <div
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="license-notice-title"
+                    style="position: relative; z-index: 1; width: 22rem; max-width: calc(100vw - 2rem); border-radius: 0.75rem; background: #fff; padding: 1.25rem; box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);"
+                    class="dark:bg-gray-900 dark:ring-1 dark:ring-white/10"
+                >
+                    <h2 id="license-notice-title" class="text-base font-semibold text-gray-950 dark:text-white">
+                        Masa berlangganan hampir berakhir
+                    </h2>
+                    <p class="mt-2 text-sm leading-6 text-gray-500 dark:text-gray-400">
+                        WOFINS berakhir
+                        <strong class="font-semibold text-gray-950 dark:text-white">{{ $license->ends_at?->translatedFormat('d M Y') }}</strong>
+                        (sisa {{ $days }} hari). Perpanjang agar admin tetap bisa dipakai.
+                    </p>
+
+                    <div class="mt-5 grid gap-2">
+                        <x-filament::button tag="a" :href="$contactUrl" target="_blank" x-on:click="dismiss()">
+                            Perpanjang di wofins.id
+                        </x-filament::button>
+                        <x-filament::button color="gray" tag="a" :href="$licenseUrl" x-on:click="dismiss()">
+                            Lihat lisensi
+                        </x-filament::button>
+                        <x-filament::button color="gray" x-on:click="dismiss()">
+                            Mengerti
+                        </x-filament::button>
+                    </div>
                 </div>
             </div>
-        </div>
+        </template>
     </div>
 @endif
