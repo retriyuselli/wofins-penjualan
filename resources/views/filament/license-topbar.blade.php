@@ -52,11 +52,26 @@
         <span class="fi-license-topbar-text">{{ $label }}</span>
     </a>
     <style>
-        .fi-license-topbar-text {
+        a.fi-license-topbar {
+            display: inline-flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            align-items: center !important;
+            gap: 4px !important;
+            white-space: nowrap !important;
+        }
+        a.fi-license-topbar svg {
+            display: block !important;
+            flex: 0 0 11px !important;
+            width: 11px !important;
+            height: 11px !important;
+        }
+        a.fi-license-topbar .fi-license-topbar-text {
             display: inline-block !important;
             font-size: 10px !important;
-            line-height: 1 !important;
-            transform: translateY(-6px) !important;
+            line-height: 11px !important;
+            transform: none !important;
+            position: static !important;
         }
     </style>
 @endif
