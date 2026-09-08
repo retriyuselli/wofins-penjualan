@@ -51,7 +51,7 @@
         class="fi-license-topbar {{ $toneClass }}"
     >
         <x-filament::icon icon="heroicon-m-calendar-days" class="h-3.5 w-3.5 shrink-0" />
-        <span class="sm:hidden">{{ $short }}</span>
-        <span class="hidden sm:inline">{{ $label }}</span>
+        <span class="fi-license-topbar-label-short">{{ $short }}</span>
+        <span class="fi-license-topbar-label-long">{{ $label }}</span>
     </a>
 @endif
