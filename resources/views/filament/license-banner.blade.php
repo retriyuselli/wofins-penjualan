@@ -36,7 +36,7 @@
                 x-cloak
                 x-transition.opacity.duration.150ms
                 role="presentation"
-                style="position: fixed; inset: 0; z-index: 80; display: flex; align-items: center; justify-content: center; padding: 1rem;"
+                style="position: fixed; inset: 0; z-index: 80; display: flex; align-items: center; justify-content: center; padding: max(0.75rem, env(safe-area-inset-top)) max(0.75rem, env(safe-area-inset-right)) max(0.75rem, env(safe-area-inset-bottom)) max(0.75rem, env(safe-area-inset-left));"
             >
                 <div
                     style="position: absolute; inset: 0; background: rgba(3, 7, 18, 0.5);"
@@ -47,8 +47,8 @@
                     role="dialog"
                     aria-modal="true"
                     aria-labelledby="license-notice-title"
-                    style="position: relative; z-index: 1; width: 22rem; max-width: calc(100vw - 2rem); border-radius: 0.75rem; background: #fff; padding: 1.25rem; box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);"
-                    class="dark:bg-gray-900 dark:ring-1 dark:ring-white/10"
+                    style="position: relative; z-index: 1; width: min(22rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); overflow-y: auto; border-radius: 0.75rem; background: #fff; padding: 1.25rem; box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);"
+                    class="fi-license-notice-dialog dark:bg-gray-900 dark:ring-1 dark:ring-white/10"
                 >
                     <h2 id="license-notice-title" class="text-base font-semibold text-gray-950 dark:text-white">
                         Masa berlangganan hampir berakhir
