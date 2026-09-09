@@ -35,6 +35,9 @@ class Prospect extends Model
         'date_lamaran' => 'date',
         'date_akad' => 'date',
         'date_resepsi' => 'date',
+        'time_lamaran' => 'datetime:H:i:s',
+        'time_akad' => 'datetime:H:i:s',
+        'time_resepsi' => 'datetime:H:i:s',
         'total_penawaran' => 'integer',
     ];
 
