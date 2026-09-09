@@ -32,6 +32,15 @@ class SimulasiProdukSeeder extends Seeder
         }
 
         $products = Product::query()->get()->keyBy('slug');
+        $neededProducts = collect($this->simulations())->pluck('product_slug');
+        $missingProducts = $neededProducts->reject(fn (string $slug) => $products->has($slug));
+
+        if ($missingProducts->isNotEmpty()) {
+            $this->command->warn('Produk belum lengkap. Menjalankan ProductSeeder...');
+            $this->call(ProductSeeder::class);
+            $products = Product::query()->get()->keyBy('slug');
+        }
+
         if ($products->isEmpty()) {
             $this->command->error('Produk belum ada. Jalankan ProductSeeder terlebih dahulu.');
 
@@ -50,8 +59,9 @@ class SimulasiProdukSeeder extends Seeder
         }
 
         $company = Company::query()->first();
-        $nameTtd = $company?->owner_name ?: 'Rama Dhona Utama';
-        $titleTtd = $company?->jabatan_owner ?: 'Direktur Utama';
+        $nameTtd = filled($company?->owner_name) ? $company->owner_name : 'Rama Dhona Utama';
+        $titleTtd = filled($company?->jabatan_owner) ? $company->jabatan_owner : 'Direktur Utama';
+        $keepIds = [];
         $created = 0;
 
         SimulasiProduk::withoutEvents(function () use (
@@ -60,6 +70,7 @@ class SimulasiProdukSeeder extends Seeder
             $accountManagers,
             $nameTtd,
             $titleTtd,
+            &$keepIds,
             &$created,
         ): void {
             foreach ($this->simulations() as $index => $data) {
@@ -78,6 +89,7 @@ class SimulasiProdukSeeder extends Seeder
                 }
 
                 $accountManager = $accountManagers->firstWhere('email', $data['am_email'])
+                    ?? $accountManagers->firstWhere('id', $prospect->user_id)
                     ?? $accountManagers->values()->get($index % $accountManagers->count());
 
                 $pricing = $this->pricingFromProduct($product);
@@ -127,18 +139,32 @@ class SimulasiProdukSeeder extends Seeder
                     }
 
                     $existing->forceFill($payload)->save();
+                    $keepIds[] = $existing->id;
                 } else {
-                    SimulasiProduk::query()->create($payload);
+                    $createdRecord = SimulasiProduk::query()->create($payload);
+                    $keepIds[] = $createdRecord->id;
                 }
 
                 $created++;
             }
         });
 
+        if ($keepIds !== []) {
+            $removed = SimulasiProduk::query()
+                ->whereNotIn('id', $keepIds)
+                ->delete();
+
+            if ($removed > 0) {
+                $this->command->warn("Simulasi di luar 5 data seed di-soft-delete: {$removed}.");
+            }
+        }
+
         $this->command->info("✅ SimulasiProdukSeeder: {$created} simulasi dibuat/diperbarui sesuai form.");
     }
 
     /**
+     * Lima simulasi — field mengikuti SimulasiProdukForm (produk, AM, harga, TTD, DP, termin).
+     *
      * @return list<array<string, mixed>>
      */
     private function simulations(): array
@@ -242,7 +268,7 @@ class SimulasiProdukSeeder extends Seeder
     }
 
     /**
-     * DP + termin = grand total. Nominal termin = sisa paket × persen, termin terakhir menyerap selisih pembulatan.
+     * DP + termin = grand total. Setiap termin punya persen, nominal, bulan, dan tahun.
      *
      * @param  list<array{persen: float, bulan: string, tahun: int}>  $terms
      * @return array{payment_dp_amount: int, payment_simulation: list<array<string, mixed>>, total_simulation: int}
@@ -266,7 +292,7 @@ class SimulasiProdukSeeder extends Seeder
                 'persen' => $persen,
                 'nominal' => $nominal,
                 'bulan' => $term['bulan'],
-                'tahun' => $term['tahun'],
+                'tahun' => (int) $term['tahun'],
             ];
         }
 

@@ -42,6 +42,13 @@ class SimulasiProduk extends Model
 
     protected $casts = [
         'payment_simulation' => 'array',
+        'total_price' => 'integer',
+        'promo' => 'integer',
+        'penambahan' => 'integer',
+        'pengurangan' => 'integer',
+        'grand_total' => 'integer',
+        'payment_dp_amount' => 'integer',
+        'total_simulation' => 'integer',
     ];
 
     protected $table = 'simulasi_produks';

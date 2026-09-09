@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Models\Company;
 use App\Models\Document;
 use App\Models\DocumentCategory;
+use App\Models\Order;
 use Carbon\Carbon;
 
 class DocumentNumber
@@ -21,6 +22,28 @@ class DocumentNumber
         $fromName = static::initialsFromName((string) ($company?->company_name ?: ''));
 
         return $fromName !== '' ? $fromName : $fallback;
+    }
+
+    /**
+     * Prefix nomor order: inisial WO perusahaan, atau MW jika belum diisi.
+     */
+    public static function orderPrefix(): string
+    {
+        $value = strtoupper(trim((string) (Company::query()->value('inisial_wo') ?: '')));
+        $value = preg_replace('/[^A-Z0-9]/', '', $value) ?? '';
+
+        return $value !== '' ? $value : 'MW';
+    }
+
+    public static function nextOrderNumber(): string
+    {
+        $prefix = static::orderPrefix();
+
+        do {
+            $number = $prefix.'-'.random_int(100000, 999999);
+        } while (Order::withTrashed()->where('number', $number)->exists());
+
+        return $number;
     }
 
     public static function initialsFromName(string $name): string

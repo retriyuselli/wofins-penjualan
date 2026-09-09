@@ -277,7 +277,6 @@ class SimulasiProdukForm
                                 ->formatStateUsing(fn ($state) => number_format((float) $state, 0, '.', ',')),
                             Repeater::make('payment_simulation')
                                 ->label('Simulasi Pembayaran')
-                                ->collapsed()
                                 ->defaultItems(1)
                                 ->itemLabel(function (array $state): ?string {
                                     $bulanRaw = $state['bulan'] ?? null;
@@ -336,13 +335,20 @@ class SimulasiProdukForm
                                         ->formatStateUsing(fn ($state) => number_format((float) $state, 0, '.', ',')),
                                     Select::make('bulan')
                                         ->label('Bulan / Termin')
-                                        ->options(MonthEnum::class),
+                                        ->options(MonthEnum::class)
+                                        ->native(false)
+                                        ->required(),
                                     TextInput::make('tahun')
                                         ->label('Tahun')
                                         ->numeric()
+                                        ->required()
                                         ->default(date('Y')),
                                 ])
-                                ->columns(3)
+                                ->columns([
+                                    'default' => 1,
+                                    'md' => 2,
+                                    'lg' => 4,
+                                ])
                                 ->addActionLabel('Tambah Pembayaran')
                                 ->reorderable(true)
                                 ->reorderableWithButtons()

@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Orders\Schemas;
 
 use App\Enums\OrderStatus;
 use App\Filament\Resources\Orders\OrderResource;
+use App\Support\DocumentNumber;
 use App\Models\Expense;
 use App\Models\NotaDinas;
 use App\Models\NotaDinasDetail;
@@ -49,12 +50,13 @@ class OrderForm
                     ->description('Detail dasar proyek')
                     ->schema([
                         TextInput::make('number')
-                            ->default('MW-'.random_int(100000, 999999))
+                            ->default(fn () => DocumentNumber::nextOrderNumber())
                             ->disabled()
                             ->dehydrated()
                             ->required()
                             ->maxLength(32)
-                            ->unique(Order::class, 'number', ignoreRecord: true),
+                            ->unique(Order::class, 'number', ignoreRecord: true)
+                            ->helperText('Prefix diambil dari Inisial WO di data perusahaan. Jika belum diisi, memakai MW.'),
                         Select::make('prospect_id')
                             ->options(function (Get $get, ?Order $record) {
                                 if ($record && $record->exists) {
@@ -171,7 +173,11 @@ class OrderForm
                                 Repeater::make('Jika Ada Pembayaran')
                                     ->relationship('dataPembayaran')
                                     ->schema([
-                                        Grid::make(3)->schema([
+                                        Grid::make([
+                                            'default' => 1,
+                                            'md' => 2,
+                                            'lg' => 3,
+                                        ])->schema([
                                             TextInput::make('keterangan')
                                                 ->label('Keterangan')
                                                 ->prefix('Pembayaran')
@@ -208,6 +214,7 @@ class OrderForm
                                                 ->required(),
                                             DatePicker::make('tgl_bayar')
                                                 ->date()
+                                                ->native(false)
                                                 ->required()
                                                 ->label('Tgl. Bayar')
                                                 ->live(onBlur: true),
@@ -229,7 +236,6 @@ class OrderForm
                                     })
                                     ->addActionLabel('Tambah Pembayaran')
                                     ->label('Pembayaran')
-                                    ->collapsed()
                                     ->itemLabel(
                                         function (array $state): ?string {
                                             $keterangan = $state['keterangan'] ?? 'Pembayaran';
@@ -440,6 +446,7 @@ class OrderForm
                             ->columnSpanFull(),
                         DatePicker::make('closing_date')
                             ->date()
+                            ->native(false)
                             ->label('Closing Date (Otomatis dari Pembayaran Pertama)')
                             ->readOnly()
                             ->default(function (Get $get, ?Order $record): string {

@@ -51,8 +51,8 @@ class CompanyForm
                                                 TextInput::make('inisial_wo')
                                                     ->label('Inisial WO')
                                                     ->maxLength(50)
-                                                    ->placeholder('Otomatis dari nama perusahaan')
-                                                    ->helperText('Dipakai pada nomor dokumen. Jika kosong, inisial diambil dari nama perusahaan (huruf pertama tiap kata, tanpa PT/CV).'),
+                                                    ->placeholder('MW')
+                                                    ->helperText('Dipakai sebagai prefix nomor order (contoh MKI-123456) dan nomor dokumen. Jika kosong, nomor order memakai MW.'),
                                                 TextInput::make('inisial_kontak')
                                                     ->label('Inisial Kontrak')
                                                     ->maxLength(50)
