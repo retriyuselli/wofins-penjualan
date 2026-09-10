@@ -2,149 +2,125 @@
 
 namespace Database\Seeders;
 
+use App\Models\Expense;
 use App\Models\NotaDinas;
+use App\Models\Order;
 use App\Models\User;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class NotaDinasSeeder extends Seeder
 {
-    /**
-     * Run the database seeder.
-     */
     public function run(): void
     {
-        // Get required data
-        $users = User::all();
+        $orders = Order::query()->with('user')->orderBy('id')->get();
+        if ($orders->isEmpty()) {
+            $this->command->warn('Order belum ada. Menjalankan OrderSeeder...');
+            $this->call(OrderSeeder::class);
+            $orders = Order::query()->with('user')->orderBy('id')->get();
+        }
 
-        if ($users->count() < 2) {
-            $this->command->error('Need at least 2 users. Please run UserSeeder first.');
+        if ($orders->isEmpty()) {
+            $this->command->error('Order belum ada. Jalankan OrderSeeder terlebih dahulu.');
 
             return;
         }
 
-        $this->command->info('Creating Nota Dinas records...');
+        $pengirim = User::role('Account Manager')->orderBy('id')->first()
+            ?? User::query()->orderBy('id')->first();
+        $penerima = User::role('Finance')->orderBy('id')->first()
+            ?? User::query()->where('id', '!=', $pengirim?->id)->orderBy('id')->first()
+            ?? $pengirim;
+        $approver = User::role('super_admin')->orderBy('id')->first() ?? $penerima;
 
-        // Sample Nota Dinas data - Basic headers only
-        $notaDinasList = [
-            [
-                'no_nd' => 'ND/001/VIII/2025',
-                'tanggal' => '2025-08-01',
-                'sifat' => 'Segera',
-                'hal' => 'Permintaan Transfer Vendor Wedding',
-                'catatan' => 'Transfer untuk vendor wedding. Mohon segera diproses.',
-                'status' => 'disetujui',
-            ],
-            [
-                'no_nd' => 'ND/002/VIII/2025',
-                'tanggal' => '2025-08-05',
-                'sifat' => 'Biasa',
-                'hal' => 'Permintaan Transfer Vendor Catering',
-                'catatan' => 'Transfer untuk vendor catering acara wedding.',
-                'status' => 'diajukan',
-            ],
-            [
-                'no_nd' => 'ND/003/VIII/2025',
-                'tanggal' => '2025-08-10',
-                'sifat' => 'Segera',
-                'hal' => 'Permintaan Transfer Multiple Vendor',
-                'catatan' => 'Transfer untuk beberapa vendor acara wedding.',
-                'status' => 'draft',
-            ],
-            [
-                'no_nd' => 'ND/004/VIII/2025',
-                'tanggal' => '2025-08-12',
-                'sifat' => 'Urgent',
-                'hal' => 'Transfer Pelunasan Vendor Musik',
-                'catatan' => 'Pelunasan untuk vendor musik dan sound system.',
-                'status' => 'disetujui',
-            ],
-            [
-                'no_nd' => 'ND/005/VIII/2025',
-                'tanggal' => '2025-08-15',
-                'sifat' => 'Biasa',
-                'hal' => 'Transfer Vendor Makeup & Busana',
-                'catatan' => 'Transfer untuk vendor makeup artist dan sewa busana pengantin.',
-                'status' => 'diajukan',
-            ],
-            [
-                'no_nd' => 'ND/006/VIII/2025',
-                'tanggal' => '2025-08-18',
-                'sifat' => 'Segera',
-                'hal' => 'Transfer Vendor Operasional Kantor',
-                'catatan' => 'Transfer untuk keperluan operasional kantor bulan ini.',
-                'status' => 'disetujui',
-            ],
-            [
-                'no_nd' => 'ND/007/VIII/2025',
-                'tanggal' => '2025-08-20',
-                'sifat' => 'Biasa',
-                'hal' => 'Transfer Vendor Maintenance Equipment',
-                'catatan' => 'Transfer untuk maintenance peralatan kantor dan studio.',
-                'status' => 'draft',
-            ],
-            [
-                'no_nd' => 'ND/008/VIII/2025',
-                'tanggal' => '2025-08-25',
-                'sifat' => 'Urgent',
-                'hal' => 'Transfer Emergency Vendor',
-                'catatan' => 'Transfer emergency untuk vendor pengganti mendadak.',
-                'status' => 'diajukan',
-            ],
-            [
-                'no_nd' => 'ND/009/IX/2025',
-                'tanggal' => '2025-09-01',
-                'sifat' => 'Segera',
-                'hal' => 'Transfer Vendor Wedding September',
-                'catatan' => 'Transfer untuk vendor wedding di bulan September.',
-                'status' => 'disetujui',
-            ],
-            [
-                'no_nd' => 'ND/010/IX/2025',
-                'tanggal' => '2025-09-05',
-                'sifat' => 'Biasa',
-                'hal' => 'Transfer Vendor Operasional September',
-                'catatan' => 'Transfer untuk keperluan operasional bulan September.',
-                'status' => 'draft',
-            ],
-        ];
+        if (! $pengirim || ! $penerima) {
+            $this->command->error('User belum ada. Jalankan UserSeeder terlebih dahulu.');
 
-        $created = 0;
-
-        foreach ($notaDinasList as $ndData) {
-            $notaDinas = NotaDinas::firstOrCreate(
-                ['no_nd' => $ndData['no_nd']],
-                [
-                    'tanggal' => $ndData['tanggal'],
-                    'pengirim_id' => $users->random()->id,
-                    'penerima_id' => $users->random()->id,
-                    'sifat' => $ndData['sifat'],
-                    'hal' => $ndData['hal'],
-                    'catatan' => $ndData['catatan'],
-                    'status' => $ndData['status'],
-                    'approved_by' => $ndData['status'] === 'disetujui' ? $users->random()->id : null,
-                    'approved_at' => $ndData['status'] === 'disetujui' ? Carbon::now()->subDays(rand(1, 30)) : null,
-                ]
-            );
-
-            $created++;
-            $this->command->info("✅ Created Nota Dinas: {$ndData['no_nd']}");
+            return;
         }
 
-        $this->command->info('🎉 NotaDinas seeder completed successfully!');
-        $this->command->info("📊 Created {$created} Nota Dinas header records");
+        $year = (int) date('Y');
+        $keepIds = [];
+        $created = 0;
 
-        // Show summary
-        $this->command->table(
-            ['Metric', 'Count'],
-            [
-                ['Total Nota Dinas', $created],
-                ['Draft Status', NotaDinas::where('status', 'draft')->count()],
-                ['Diajukan Status', NotaDinas::where('status', 'diajukan')->count()],
-                ['Disetujui Status', NotaDinas::where('status', 'disetujui')->count()],
-            ]
-        );
+        foreach ($orders->values() as $index => $order) {
+            $sequence = str_pad((string) ($index + 1), 3, '0', STR_PAD_LEFT);
+            $noNd = "ND/BIS/{$sequence}/{$year}";
+            $tanggal = Carbon::parse($order->closing_date ?: now())->toDateString();
+            $pengirimId = $order->user_id ?: $pengirim->id;
 
-        $this->command->info('💡 Note: Use NotaDinasDetailSeeder to add detail records to these Nota Dinas.');
+            $existing = NotaDinas::withTrashed()->where('no_nd', $noNd)->first();
+            if ($existing?->trashed()) {
+                $existing->restore();
+            }
+
+            $payload = [
+                'kategori_nd' => 'BIS',
+                'tanggal' => $tanggal,
+                'pengirim_id' => $pengirimId,
+                'penerima_id' => $penerima->id,
+                'sifat' => $index % 2 === 0 ? 'Segera' : 'Biasa',
+                'hal' => 'Permintaan Transfer Vendor '.$order->name,
+                'catatan' => 'Nota dinas untuk pembayaran vendor wedding pada '.$order->name.'. Mohon diproses sesuai tahap pembayaran.',
+                'status' => 'disetujui',
+                'approved_by' => $approver?->id,
+                'approved_at' => Carbon::parse($tanggal)->addDay(),
+                'nd_upload' => $this->seedPdf($noNd, $order->name),
+            ];
+
+            if ($existing) {
+                $existing->forceFill($payload)->save();
+                $keepIds[] = $existing->id;
+            } else {
+                $createdNd = NotaDinas::query()->create(array_merge($payload, ['no_nd' => $noNd]));
+                $keepIds[] = $createdNd->id;
+            }
+
+            $created++;
+        }
+
+        if ($keepIds !== []) {
+            $extras = NotaDinas::query()->whereNotIn('id', $keepIds)->get();
+            foreach ($extras as $notaDinas) {
+                $detailIds = $notaDinas->details()->withTrashed()->pluck('id');
+                Expense::withTrashed()->whereIn('nota_dinas_detail_id', $detailIds)->forceDelete();
+                Expense::withTrashed()->where('nota_dinas_id', $notaDinas->id)->forceDelete();
+                $notaDinas->details()->withTrashed()->each(fn ($detail) => $detail->forceDelete());
+                $notaDinas->forceDelete();
+            }
+        }
+
+        $this->command->info("✅ NotaDinasSeeder: {$created} nota dinas dibuat/diperbarui (satu per order).");
+    }
+
+    private function seedPdf(string $noNd, string $eventName): string
+    {
+        $path = 'nota-dinas-uploads/'.Str::slug($noNd).'.pdf';
+        $html = <<<HTML
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: DejaVu Sans, sans-serif; font-size: 12px; color: #111827; line-height: 1.5; }
+        h1 { font-size: 16px; }
+        .meta { color: #6b7280; margin-bottom: 16px; }
+    </style>
+</head>
+<body>
+    <h1>Nota Dinas</h1>
+    <div class="meta">{$noNd}</div>
+    <p>Permintaan transfer vendor untuk {$eventName}.</p>
+    <p>Dokumen seed untuk mengisi lampiran form Nota Dinas.</p>
+</body>
+</html>
+HTML;
+
+        Storage::disk('public')->put($path, Pdf::loadHTML($html)->setPaper('a4')->output());
+
+        return $path;
     }
 }

@@ -3,10 +3,7 @@
 @section('title', 'Harga Paket — WOFINS')
 
 @push('styles')
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <style>
+<style>
         :root {
             --wf-navy: #0b1f3a;
             --wf-navy-deep: #071526;
@@ -23,6 +20,10 @@
             font-family: 'Poppins', system-ui, sans-serif;
             color: var(--wf-ink);
             background: var(--wf-white);
+        }
+
+        [x-cloak] {
+            display: none !important;
         }
 
         .wf-page h1,
@@ -100,12 +101,21 @@
             flex-direction: column;
             height: 100%;
             position: relative;
+            z-index: 1;
+            overflow: visible;
             transition: transform .2s ease, box-shadow .2s ease;
         }
 
         .wf-price-card:hover {
+            z-index: 5;
             transform: translateY(-3px);
             box-shadow: 0 18px 40px -24px rgba(11, 31, 58, 0.35);
+        }
+
+        .wf-price-card:has(.wf-feature-tip:hover),
+        .wf-price-card:has(.wf-feature-tip:focus-visible),
+        .wf-price-card:has(.wf-feature-tip.is-open) {
+            z-index: 40;
         }
 
         .wf-price-card.is-popular {
@@ -139,6 +149,101 @@
             border-radius: 999px;
         }
 
+        .wf-billing-select-wrap {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .wf-billing-dd {
+            position: relative;
+            width: min(100%, 17.5rem);
+        }
+
+        .wf-billing-trigger {
+            display: flex;
+            width: 100%;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            border: 1.5px solid var(--wf-line);
+            background: #fff;
+            border-radius: 0.75rem;
+            padding: 0.72rem 0.95rem;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--wf-navy);
+            cursor: pointer;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .wf-billing-trigger:hover {
+            border-color: rgba(11, 31, 58, 0.35);
+        }
+
+        .wf-billing-trigger.is-open,
+        .wf-billing-trigger:focus {
+            outline: none;
+            border-color: var(--wf-navy);
+            box-shadow: 0 0 0 3px rgba(11, 31, 58, 0.12);
+        }
+
+        .wf-billing-trigger i {
+            font-size: 0.7rem;
+            color: var(--wf-muted);
+        }
+
+        .wf-billing-menu {
+            position: absolute;
+            z-index: 40;
+            top: calc(100% + 0.4rem);
+            left: 0;
+            right: 0;
+            background: #fff;
+            border: 1px solid var(--wf-line);
+            border-radius: 0.75rem;
+            box-shadow: 0 16px 40px -20px rgba(11, 31, 58, 0.45);
+            padding: 0.35rem;
+            overflow: hidden;
+        }
+
+        .wf-billing-option {
+            display: flex;
+            width: 100%;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
+            border: 0;
+            background: transparent;
+            border-radius: 0.5rem;
+            padding: 0.65rem 0.75rem;
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: var(--wf-navy);
+            text-align: left;
+            cursor: pointer;
+        }
+
+        .wf-billing-option:hover,
+        .wf-billing-option.is-active {
+            background: rgba(11, 31, 58, 0.06);
+        }
+
+        .wf-best-badge {
+            flex-shrink: 0;
+            display: inline-flex;
+            align-items: center;
+            border-radius: 999px;
+            padding: 0.22rem 0.55rem;
+            font-size: 0.58rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            background: rgba(201, 162, 39, 0.18);
+            color: #8a6d12;
+            white-space: nowrap;
+        }
+
         .wf-check {
             width: 1.2rem;
             height: 1.2rem;
@@ -155,6 +260,61 @@
         .wf-check.navy {
             background: rgba(11, 31, 58, 0.08);
             color: var(--wf-navy);
+        }
+
+        .wf-feature-tip {
+            position: relative;
+            display: inline;
+            border-bottom: 1px dashed rgba(11, 31, 58, 0.35);
+            cursor: help;
+            outline: none;
+        }
+
+        .wf-feature-tip:hover,
+        .wf-feature-tip:focus-visible {
+            border-bottom-color: var(--wf-gold);
+            color: var(--wf-navy);
+        }
+
+        .wf-feature-tip__bubble {
+            position: absolute;
+            left: 0;
+            top: calc(100% + 0.65rem);
+            z-index: 50;
+            width: min(17.5rem, 70vw);
+            padding: 0.75rem 0.9rem;
+            border-radius: 0.65rem;
+            background: var(--wf-navy);
+            color: #fff;
+            font-size: 0.75rem;
+            font-weight: 400;
+            line-height: 1.45;
+            letter-spacing: 0;
+            text-transform: none;
+            box-shadow: 0 14px 28px -16px rgba(7, 21, 38, 0.55);
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transform: translateY(4px);
+            transition: opacity .15s ease, transform .15s ease, visibility .15s ease;
+        }
+
+        .wf-feature-tip__bubble::before {
+            content: '';
+            position: absolute;
+            left: 1rem;
+            top: -6px;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-bottom: 6px solid var(--wf-navy);
+        }
+
+        .wf-feature-tip:hover .wf-feature-tip__bubble,
+        .wf-feature-tip:focus-visible .wf-feature-tip__bubble,
+        .wf-feature-tip.is-open .wf-feature-tip__bubble {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
         }
 
         .wf-table-wrap {
@@ -188,7 +348,9 @@
             font-weight: 600;
             color: var(--wf-ink);
             white-space: normal;
-            min-width: 180px;
+            min-width: 8.5rem;
+            max-width: 11rem;
+            word-break: break-word;
         }
 
         .wf-compare tr:last-child td {
@@ -233,111 +395,69 @@
 
 @section('content')
 @php
-    $plans = [
-        [
-            'key' => 'starter',
-            'name' => 'Starter',
-            'desc' => 'Cocok untuk WO yang baru mulai merapikan operasional.',
-            'price' => '199',
-            'unit' => 'RB',
-            'popular' => false,
-            'cta' => 'Pilih Paket Starter',
-            'cta_class' => 'wf-btn-ghost',
-            'check' => 'navy',
-            'features' => [
-                'Hingga 3 pengguna',
-                'Manajemen proyek wedding',
-                'Keuangan dasar',
-                'Nota dinas digital',
-                'Dokumen & SOP',
-                'Support email',
-            ],
-        ],
-        [
-            'key' => 'professional',
-            'name' => 'Professional',
-            'desc' => 'Paling cocok untuk WO yang ingin kendali penuh sehari-hari.',
-            'price' => '399',
-            'unit' => 'RB',
-            'popular' => true,
-            'cta' => 'Pilih Paket Professional',
-            'cta_class' => 'wf-btn-gold',
-            'check' => '',
-            'features' => [
-                'Hingga 10 pengguna',
-                'Semua fitur Starter',
-                'Rekonsiliasi rekening koran',
-                'HRIS & absensi GPS',
-                'Payroll dasar',
-                'Hak akses per jabatan',
-                'Support prioritas',
-            ],
-        ],
-        [
-            'key' => 'business',
-            'name' => 'Business',
-            'desc' => 'Untuk WO dengan banyak proyek dan tim lintas fungsi.',
-            'price' => '699',
-            'unit' => 'RB',
-            'popular' => false,
-            'cta' => 'Pilih Paket Business',
-            'cta_class' => 'wf-btn-ghost',
-            'check' => 'navy',
-            'features' => [
-                'Hingga 25 pengguna',
-                'Semua fitur Professional',
-                'Payroll & portal karyawan',
-                'Laporan lanjutan',
-                'Multi-approval workflow',
-                'Onboarding & training tim',
-                'Support WhatsApp',
-            ],
-        ],
-        [
-            'key' => 'enterprise',
-            'name' => 'Enterprise',
-            'desc' => 'Solusi kustom untuk grup WO / skala nasional.',
-            'price' => null,
-            'unit' => null,
-            'popular' => false,
-            'cta' => 'Hubungi Sales Kami',
-            'cta_class' => 'wf-btn-ghost',
-            'check' => 'navy',
-            'features' => [
-                'Pengguna tidak terbatas',
-                'Semua fitur Business',
-                'Custom workflow & integrasi',
-                'Dedicated account manager',
-                'SLA & keamanan lanjutan',
-                'Pelatihan onsite / online',
-                'Prioritas pengembangan fitur',
-            ],
-        ],
-    ];
+    use App\Support\PricingPlans;
 
-    $compareRows = [
-        ['Jumlah pengguna', 'Hingga 3', 'Hingga 10', 'Hingga 25', 'Custom'],
-        ['Manajemen proyek', 'Dasar', 'Lengkap', 'Lengkap', 'Lengkap'],
-        ['Keuangan & laporan', 'Dasar', 'Lengkap', 'Lengkap', 'Lengkap'],
-        ['Rekonsiliasi rekening', false, true, true, true],
-        ['Nota dinas digital', true, true, true, true],
-        ['HRIS & absensi GPS', false, true, true, true],
-        ['Payroll', false, 'Dasar', 'Lengkap', 'Lengkap'],
-        ['Hak akses jabatan', 'Terbatas', true, true, true],
-        ['Approval workflow', false, 'Dasar', 'Multi-level', 'Custom'],
-        ['Support', 'Email', 'Prioritas', 'WhatsApp', 'Dedicated'],
-    ];
+    $pendingOrder = (auth()->check() && class_exists(\App\Models\SubscriptionOrder::class))
+        ? \App\Models\SubscriptionOrder::pendingForUser(auth()->user())
+        : null;
+
+    $plans = collect(PricingPlans::all())->map(function (array $plan) {
+        $monthly = (int) ($plan['price_monthly'] ?? 0);
+        $annual = (int) ($plan['price_annual'] ?? 0);
+        $biennial = (int) ($plan['price_biennial'] ?? ($monthly * 24));
+        $quadrennial = (int) ($plan['price_quadrennial'] ?? ($monthly * 48));
+        $annualPerMonth = $annual > 0 ? (int) round($annual / 12) : 0;
+        $biennialPerMonth = $biennial > 0 ? (int) round($biennial / 24) : $monthly;
+        $quadrennialPerMonth = $quadrennial > 0 ? (int) round($quadrennial / 48) : $monthly;
+
+        $formatIdr = static function (int $amount): string {
+            if ($amount <= 0) {
+                return '';
+            }
+
+            return number_format($amount, 0, ',', '.');
+        };
+
+        $plan['monthly_display'] = $formatIdr($monthly);
+        $plan['annual_monthly_display'] = $formatIdr($annualPerMonth);
+        $plan['annual_total_display'] = $formatIdr($annual);
+        $plan['biennial_monthly_display'] = $formatIdr($biennialPerMonth);
+        $plan['biennial_total_display'] = $formatIdr($biennial);
+        $plan['quadrennial_monthly_display'] = $formatIdr($quadrennialPerMonth);
+        $plan['quadrennial_total_display'] = $formatIdr($quadrennial);
+        $plan['monthly_yearly_total_display'] = $formatIdr($monthly * 12);
+        $plan['has_price'] = $monthly > 0 && $annual > 0;
+
+        return $plan;
+    })->all();
+
+    $compareRows = PricingPlans::compareRows();
 
     $faqs = [
         ['Apakah ada biaya instalasi?', 'Tidak. Semua paket WOFINS tanpa biaya instalasi. Anda hanya membayar biaya berlangganan sesuai paket yang dipilih.'],
+        ['Apa yang termasuk domain gratis?', 'Domain dan hosting gratis hanya di paket Enterprise, dengan syarat berlangganan minimal 2 tahun. Setup dibantu tim pengembang saat onboarding.'],
         ['Bisakah saya upgrade paket nanti?', 'Bisa. Anda dapat upgrade kapan saja; selisih biaya akan disesuaikan dengan sisa masa aktif langganan.'],
+        ['Apakah ada paket Enterprise?', 'Ya. Paket Enterprise Rp 333.333/bulan dengan minimal berlangganan 2 tahun (Rp 8 juta). Termasuk fitur Business, kuota lebih longgar, domain, hosting, dan kustomisasi alur. Hubungi pengembang untuk aktivasi.'],
+        ['Bagaimana dengan kategori?', 'Master kategori dikelola admin platform (super admin). Tim WO tetap bisa memakai kategori yang sudah disediakan.'],
+        ['Apa itu crew freelance?', 'Data crew freelance milik company (bukan akun pengguna). Fitur ini hanya di paket Business: tambah crew dan bagikan link undangan agar crew mengisi sendiri tanpa makan kuota pengguna.'],
         ['Apakah data saya aman?', 'Ya. Akses berbasis peran, riwayat aktivitas, approval, backup terpusat, dan audit trail membantu menjaga keamanan data bisnis Anda.'],
         ['Apakah ada masa uji coba?', 'Kami sediakan demo gratis dan konsultasi kebutuhan agar Anda bisa menilai kesesuaian WOFINS sebelum berlangganan.'],
         ['Bagaimana proses onboarding?', 'Setelah paket dipilih, tim kami membantu setup perusahaan, pengguna, dan alur kerja inti agar tim Anda siap memakai sistem.'],
     ];
 @endphp
 
-    <div class="wf-page" x-data="{ openFaq: 0 }">
+    <div class="wf-page" x-data="{
+        openFaq: 0,
+        billing: 'quadrennial',
+        billingOpen: false,
+        openTip: null,
+        billingLabels: {
+            monthly: '1 bulan',
+            annual: '12 bulan',
+            biennial: '24 bulan',
+            quadrennial: '48 bulan',
+        },
+    }">
         @include('front.partials.wf-nav')
 
         {{-- Intro --}}
@@ -348,7 +468,7 @@
                     Pilih Paket yang Sesuai dengan Kebutuhan Wedding Organizer Anda
                 </h1>
                 <p class="mt-4 text-[var(--wf-muted)] max-w-2xl mx-auto">
-                    Paket WOFINS dirancang fleksibel — dari WO yang baru merapikan operasional hingga tim skala enterprise.
+                    Paket WOFINS dirancang fleksibel — dari WO yang baru merapikan operasional hingga tim Business, plus paket Enterprise sesuai kebutuhan.
                 </p>
                 <div class="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-sm font-semibold text-[var(--wf-navy)]">
                     @foreach (['Tanpa biaya instalasi', 'Update & support gratis', 'Aman & terpercaya'] as $benefit)
@@ -364,7 +484,65 @@
         {{-- Pricing cards --}}
         <section class="pb-14 pt-2">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="grid md:grid-cols-2 xl:grid-cols-4 gap-5 pt-3">
+                @if ($pendingOrder)
+                    <div class="max-w-5xl mx-auto mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div>
+                            <p class="text-sm font-bold text-amber-900">Pesanan menunggu tinjauan</p>
+                            <p class="mt-1 text-sm text-amber-800/90">
+                                Kode <strong>{{ $pendingOrder->order_code }}</strong> ({{ $pendingOrder->plan_name }} · {{ $pendingOrder->billing_label }})
+                                masih diproses. Selesaikan dulu — disetujui atau ditolak — sebelum memesan paket lain.
+                            </p>
+                        </div>
+                        <a href="{{ \Illuminate\Support\Facades\Route::has('pesanan-saya.show') ? route('pesanan-saya.show', $pendingOrder->order_code) : route('kontak') }}"
+                           class="wf-btn-navy shrink-0 inline-flex items-center justify-center px-5 py-2.5 text-sm">
+                            Lihat pesanan
+                        </a>
+                    </div>
+                @endif
+
+                <div class="wf-billing-select-wrap">
+                    <div class="wf-billing-dd"
+                         @click.outside="billingOpen = false"
+                         @keydown.escape.window="billingOpen = false">
+                        <button type="button"
+                                class="wf-billing-trigger"
+                                :class="{ 'is-open': billingOpen }"
+                                @click="billingOpen = !billingOpen"
+                                :aria-expanded="billingOpen.toString()"
+                                aria-haspopup="listbox"
+                                aria-label="Pilih durasi berlangganan">
+                            <span x-text="billingLabels[billing]"></span>
+                            <i class="fa-solid" :class="billingOpen ? 'fa-chevron-up' : 'fa-chevron-down'" aria-hidden="true"></i>
+                        </button>
+                        <div class="wf-billing-menu"
+                             x-show="billingOpen"
+                             x-cloak
+                             x-transition.opacity.duration.120ms
+                             role="listbox"
+                             aria-label="Durasi berlangganan">
+                            <template x-for="opt in [
+                                { value: 'monthly', label: '1 bulan' },
+                                { value: 'annual', label: '12 bulan' },
+                                { value: 'biennial', label: '24 bulan' },
+                                { value: 'quadrennial', label: '48 bulan' },
+                            ]" :key="opt.value">
+                                <button type="button"
+                                        class="wf-billing-option"
+                                        role="option"
+                                        :class="{ 'is-active': billing === opt.value }"
+                                        :aria-selected="(billing === opt.value).toString()"
+                                        @click="billing = opt.value; billingOpen = false">
+                                    <span x-text="opt.label"></span>
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Kartu paket: terpusat seperti semula, sedikit lebih lebar --}}
+            <div class="w-full max-w-[92rem] mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-5 pt-1">
                     @foreach ($plans as $plan)
                         <div class="wf-price-card {{ $plan['popular'] ? 'is-popular' : '' }}">
                             @if ($plan['popular'])
@@ -377,40 +555,141 @@
                             </div>
 
                             <div class="mb-5">
-                                @if ($plan['price'])
-                                    <div class="flex items-end gap-1">
+                                @if ($plan['has_price'] && ($plan['min_billing'] ?? '') === 'biennial')
+                                    <div class="flex flex-wrap items-end gap-1 min-w-0" x-show="billing !== 'quadrennial'" x-cloak>
                                         <span class="text-sm font-semibold text-[var(--wf-muted)] mb-1">Rp</span>
-                                        <span class="text-4xl font-extrabold text-[var(--wf-navy)] leading-none">{{ $plan['price'] }}</span>
-                                        <span class="text-lg font-bold text-[var(--wf-navy)] mb-0.5">{{ $plan['unit'] }}</span>
+                                        <span class="text-4xl font-extrabold text-[var(--wf-navy)] leading-none break-all">{{ $plan['biennial_monthly_display'] }}</span>
                                         <span class="text-sm text-[var(--wf-muted)] mb-1">/ bulan</span>
                                     </div>
-                                    <div class="mt-2 flex flex-wrap items-center gap-2 text-xs text-[var(--wf-muted)]">
-                                        <span>Dibayar tahunan</span>
-                                        <span class="wf-save-pill">Hemat 2 bulan</span>
+                                    <div class="mt-2 text-xs text-[var(--wf-muted)] break-words" x-show="billing !== 'quadrennial'" x-cloak>
+                                        Dibayar 24 bulan Rp {{ $plan['biennial_total_display'] }}
                                     </div>
+
+                                    <div class="flex flex-wrap items-end gap-1 min-w-0" x-show="billing === 'quadrennial'" x-cloak>
+                                        <span class="text-sm font-semibold text-[var(--wf-muted)] mb-1">Rp</span>
+                                        <span class="text-4xl font-extrabold text-[var(--wf-navy)] leading-none break-all">{{ $plan['quadrennial_monthly_display'] }}</span>
+                                        <span class="text-sm text-[var(--wf-muted)] mb-1">/ bulan</span>
+                                    </div>
+                                    <div class="mt-2 text-xs text-[var(--wf-muted)] break-words" x-show="billing === 'quadrennial'" x-cloak>
+                                        Dibayar 48 bulan Rp {{ $plan['quadrennial_total_display'] }}
+                                    </div>
+                                    <div class="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--wf-navy)] break-words">
+                                        <i class="fa-solid fa-lock text-[10px] shrink-0" aria-hidden="true"></i>
+                                        <span>Terkunci: minimal 2 tahun</span>
+                                    </div>
+                                @elseif ($plan['has_price'])
+                                    {{-- 1 bulan --}}
+                                    <div class="flex flex-wrap items-end gap-1 min-w-0" x-show="billing === 'monthly'" x-cloak>
+                                        @if (! empty($plan['price_prefix']))
+                                            <span class="text-sm font-semibold text-[var(--wf-muted)] mb-1 w-full sm:w-auto">{{ $plan['price_prefix'] }}</span>
+                                        @endif
+                                        <span class="text-sm font-semibold text-[var(--wf-muted)] mb-1">Rp</span>
+                                        <span class="text-4xl font-extrabold text-[var(--wf-navy)] leading-none break-all">{{ $plan['monthly_display'] }}</span>
+                                        <span class="text-sm text-[var(--wf-muted)] mb-1">/ bulan</span>
+                                    </div>
+                                    <div class="mt-2 text-xs text-[var(--wf-muted)] break-words" x-show="billing === 'monthly'" x-cloak>
+                                        Ditagih bulanan
+                                    </div>
+
+                                    {{-- 12 bulan --}}
+                                    <div class="flex flex-wrap items-end gap-1 min-w-0" x-show="billing === 'annual'" x-cloak>
+                                        @if (! empty($plan['price_prefix']))
+                                            <span class="text-sm font-semibold text-[var(--wf-muted)] mb-1 w-full sm:w-auto">{{ $plan['price_prefix'] }}</span>
+                                        @endif
+                                        <span class="text-sm font-semibold text-[var(--wf-muted)] mb-1">Rp</span>
+                                        <span class="text-4xl font-extrabold text-[var(--wf-navy)] leading-none break-all">{{ $plan['annual_monthly_display'] }}</span>
+                                        <span class="text-sm text-[var(--wf-muted)] mb-1">/ bulan</span>
+                                    </div>
+                                    <div class="mt-2 text-xs text-[var(--wf-muted)] break-words" x-show="billing === 'annual'" x-cloak>
+                                        Dibayar 12 bulan Rp {{ $plan['annual_total_display'] }}
+                                    </div>
+
+                                    {{-- 24 bulan --}}
+                                    <div class="flex flex-wrap items-end gap-1 min-w-0" x-show="billing === 'biennial'" x-cloak>
+                                        @if (! empty($plan['price_prefix']))
+                                            <span class="text-sm font-semibold text-[var(--wf-muted)] mb-1 w-full sm:w-auto">{{ $plan['price_prefix'] }}</span>
+                                        @endif
+                                        <span class="text-sm font-semibold text-[var(--wf-muted)] mb-1">Rp</span>
+                                        <span class="text-4xl font-extrabold text-[var(--wf-navy)] leading-none break-all">{{ $plan['biennial_monthly_display'] }}</span>
+                                        <span class="text-sm text-[var(--wf-muted)] mb-1">/ bulan</span>
+                                    </div>
+                                    <div class="mt-2 text-xs text-[var(--wf-muted)] break-words" x-show="billing === 'biennial'" x-cloak>
+                                        Dibayar 24 bulan Rp {{ $plan['biennial_total_display'] }}
+                                    </div>
+
+                                    {{-- 48 bulan --}}
+                                    <div class="flex flex-wrap items-end gap-1 min-w-0" x-show="billing === 'quadrennial'" x-cloak>
+                                        @if (! empty($plan['price_prefix']))
+                                            <span class="text-sm font-semibold text-[var(--wf-muted)] mb-1 w-full sm:w-auto">{{ $plan['price_prefix'] }}</span>
+                                        @endif
+                                        <span class="text-sm font-semibold text-[var(--wf-muted)] mb-1">Rp</span>
+                                        <span class="text-4xl font-extrabold text-[var(--wf-navy)] leading-none break-all">{{ $plan['quadrennial_monthly_display'] }}</span>
+                                        <span class="text-sm text-[var(--wf-muted)] mb-1">/ bulan</span>
+                                    </div>
+                                    <div class="mt-2 text-xs text-[var(--wf-muted)] break-words" x-show="billing === 'quadrennial'" x-cloak>
+                                        Dibayar 48 bulan Rp {{ $plan['quadrennial_total_display'] }}
+                                    </div>
+                                    @if (! empty($plan['pricing_note']))
+                                        <div class="mt-1 text-xs text-[var(--wf-muted)] break-words">{{ $plan['pricing_note'] }}</div>
+                                    @endif
                                 @else
-                                    <p class="text-3xl font-extrabold text-[var(--wf-navy)] leading-tight">Hubungi Kami</p>
-                                    <p class="mt-2 text-xs text-[var(--wf-muted)]">Harga & scope disesuaikan kebutuhan</p>
+                                    <p class="text-3xl font-extrabold text-[var(--wf-navy)] leading-tight">Enterprise</p>
+                                    <p class="mt-2 text-xs text-[var(--wf-muted)]">Harga & scope hubungi pengembang</p>
                                 @endif
                             </div>
 
                             <ul class="space-y-2.5 mb-8 flex-1">
-                                @foreach ($plan['features'] as $feature)
+                                @foreach (\App\Support\PricingPlans::featureItems($plan) as $feature)
                                     <li class="flex items-start gap-2.5 text-sm text-[var(--wf-ink)]">
                                         <span class="wf-check {{ $plan['check'] }}"><i class="fa-solid fa-check"></i></span>
-                                        <span>{{ $feature }}</span>
+                                        @if ($feature['tip'])
+                                            <span class="wf-feature-tip"
+                                                  tabindex="0"
+                                                  role="button"
+                                                  aria-label="{{ $feature['label'] }}: {{ $feature['tip'] }}"
+                                                  @click.prevent="openTip = openTip === '{{ $plan['key'] }}-{{ $loop->index }}' ? null : '{{ $plan['key'] }}-{{ $loop->index }}'"
+                                                  @keydown.escape.window="openTip = null"
+                                                  :class="{ 'is-open': openTip === '{{ $plan['key'] }}-{{ $loop->index }}' }">
+                                                {{ $feature['label'] }}
+                                                <span class="wf-feature-tip__bubble" role="tooltip">{{ $feature['tip'] }}</span>
+                                            </span>
+                                        @else
+                                            <span>{{ $feature['label'] }}</span>
+                                        @endif
                                     </li>
                                 @endforeach
                             </ul>
 
-                            <a href="{{ route('kontak', ['paket' => $plan['key']]) }}"
-                               class="{{ $plan['cta_class'] }} w-full inline-flex items-center justify-center px-4 py-3 text-sm text-center">
-                                {{ $plan['cta'] }}
-                            </a>
+                            @if ($pendingOrder && ($plan['selectable'] ?? true))
+                                <span class="{{ $plan['cta_class'] }} w-full inline-flex items-center justify-center px-4 py-3 text-sm text-center opacity-50 cursor-not-allowed pointer-events-none"
+                                      aria-disabled="true"
+                                      title="Selesaikan pesanan {{ $pendingOrder->order_code }} terlebih dahulu">
+                                    Menunggu tinjauan pesanan
+                                </span>
+                            @elseif (! empty($plan['cta_url']) || ! ($plan['selectable'] ?? true))
+                                <a href="{{ $plan['cta_url'] ?? 'https://wa.me/6281373183794?text='.rawurlencode('Halo, saya ingin konsultasi paket Enterprise WOFINS.') }}"
+                                   target="_blank"
+                                   rel="noopener noreferrer"
+                                   class="{{ $plan['cta_class'] }} w-full inline-flex items-center justify-center px-4 py-3 text-sm text-center">
+                                    {{ $plan['cta'] }}
+                                </a>
+                            @elseif (\Illuminate\Support\Facades\Route::has('keranjang'))
+                                <a :href="'{{ route('keranjang') }}?paket={{ $plan['key'] }}&billing=' + billing"
+                                   class="{{ $plan['cta_class'] }} w-full inline-flex items-center justify-center px-4 py-3 text-sm text-center">
+                                    {{ $plan['cta'] }}
+                                </a>
+                            @else
+                                <a :href="'{{ route('kontak') }}?paket={{ $plan['key'] }}&billing=' + billing"
+                                   class="{{ $plan['cta_class'] }} w-full inline-flex items-center justify-center px-4 py-3 text-sm text-center">
+                                    {{ $plan['cta'] }}
+                                </a>
+                            @endif
                         </div>
                     @endforeach
                 </div>
+            </div>
 
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="mt-8 rounded-2xl bg-[#eef1f5] border border-[var(--wf-line)] px-5 py-4 flex flex-col sm:flex-row items-center justify-center gap-3 text-sm text-[var(--wf-navy)]">
                     <span class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-white text-[var(--wf-gold)] shadow-sm">
                         <i class="fa-solid fa-shield-halved"></i>
@@ -434,7 +713,6 @@
                                 <th>Starter</th>
                                 <th class="col-pro">Professional</th>
                                 <th>Business</th>
-                                <th>Enterprise</th>
                             </tr>
                         </thead>
                         <tbody>

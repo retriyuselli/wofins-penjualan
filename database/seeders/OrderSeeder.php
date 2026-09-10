@@ -107,7 +107,6 @@ class OrderSeeder extends Seeder
                 $data['no_kontrak'],
             );
             $proofImage = $this->seedImage('payment-proofs/'.date('Y/m').'/'.$slug.'-bukti.png');
-            $invoiceImage = $this->seedImage('expenses/'.$slug.'-invoice.png');
 
             $payload = [
                 'prospect_id' => $prospect->id,
@@ -144,7 +143,11 @@ class OrderSeeder extends Seeder
 
             $this->syncItems($order, $product, $pricing['total_price']);
             $this->syncPayments($order, $payments, $paymentMethod->id, $proofImage);
-            $this->syncExpenses($order, $product, $paymentMethod->id, $invoiceImage, $closingDate);
+            Expense::query()
+                ->where('order_id', $order->id)
+                ->whereNull('nota_dinas_id')
+                ->get()
+                ->each(fn (Expense $expense) => $expense->delete());
 
             $keepIds[] = $order->id;
             $created++;
@@ -353,41 +356,6 @@ class OrderSeeder extends Seeder
                 'kategori_transaksi' => 'uang_masuk',
                 'tgl_bayar' => $payment['tgl_bayar'],
                 'image' => $proofImage,
-            ]);
-        }
-    }
-
-    private function syncExpenses(Order $order, Product $product, int $paymentMethodId, ?string $invoiceImage, string $closingDate): void
-    {
-        Expense::query()
-            ->where('order_id', $order->id)
-            ->whereNull('nota_dinas_id')
-            ->get()
-            ->each(fn (Expense $expense) => $expense->delete());
-
-        $items = $product->items()->with('vendor')->get()->take(2);
-        $stages = ['down_payment', 'payment_1'];
-
-        foreach ($items as $index => $item) {
-            $vendor = $item->vendor;
-            if (! $vendor) {
-                continue;
-            }
-
-            Expense::query()->create([
-                'order_id' => $order->id,
-                'vendor_id' => $vendor->id,
-                'payment_method_id' => $paymentMethodId,
-                'note' => 'Pembayaran ke '.$vendor->name.' untuk '.$order->name,
-                'date_expense' => Carbon::parse($closingDate)->addDays(7 + ($index * 14))->toDateString(),
-                'amount' => max(500000, (int) ($item->harga_vendor ?: $vendor->harga_vendor ?: 1000000)),
-                'no_nd' => 'ND-0'.str_pad((string) ($order->id * 10 + $index + 1), 4, '0', STR_PAD_LEFT),
-                'image' => $invoiceImage,
-                'kategori_transaksi' => 'uang_keluar',
-                'payment_stage' => $stages[$index] ?? 'additional',
-                'account_holder' => $vendor->account_holder ?: $vendor->pic_name ?: $vendor->name,
-                'bank_name' => $vendor->bank_name ?: 'BCA',
-                'bank_account' => $vendor->bank_account ?: '1234567890',
             ]);
         }
     }

@@ -104,6 +104,7 @@
         'starter' => 'Paket Starter',
         'professional' => 'Paket Professional',
         'business' => 'Paket Business',
+        'custom' => 'Paket Enterprise',
         'enterprise' => 'Paket Enterprise',
         default => null,
     };

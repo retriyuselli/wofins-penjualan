@@ -58,6 +58,12 @@ class ExpenseSeeder extends Seeder
         $skipped = 0;
 
         foreach ($notaDinasDetails as $detail) {
+            if (($detail->jenis_pengeluaran ?? '') !== 'wedding' || ! $detail->order_id) {
+                $skipped++;
+
+                continue;
+            }
+
             // Check if expense already exists for this NotaDinasDetail
             $existingExpense = Expense::where('nota_dinas_detail_id', $detail->id)->first();
 
@@ -76,9 +82,9 @@ class ExpenseSeeder extends Seeder
                 continue;
             }
 
-            // Create expense based on NotaDinasDetail
+            // Create expense based on NotaDinasDetail — order harus sama dengan detail wedding
             $expenseData = [
-                'order_id' => $orders->random()->id,
+                'order_id' => $detail->order_id ?: $orders->random()->id,
                 'vendor_id' => $detail->vendor_id ?? $vendors->random()->id,
                 'payment_method_id' => $paymentMethods->random()->id,
                 'nota_dinas_id' => $detail->nota_dinas_id,
