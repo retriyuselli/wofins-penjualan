@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\SensitiveFileController;
 use App\Http\Controllers\AccountManagerReportController;
 use App\Http\Controllers\BankReconciliationTemplateController;
 use App\Http\Controllers\BankStatementFileController;
@@ -42,6 +43,12 @@ use Illuminate\Support\Facades\Route;
 $authNoStore = ['filament.auth', 'no-store'];
 $authNoStoreThrottle = [...$authNoStore, 'throttle:60,1'];
 $phpInfoMiddleware = [...$authNoStore, 'super-admin', 'throttle:10,1'];
+
+Route::middleware($authNoStoreThrottle)->prefix('secure-files')->group(function (): void {
+    Route::get('/orders/{order}/{field}', [SensitiveFileController::class, 'order'])
+        ->where('field', 'doc_kontrak|agreement_product')
+        ->name('secure-files.orders');
+});
 
 if (app()->isLocal()) {
     Route::get('/_phpinfo', function () {
