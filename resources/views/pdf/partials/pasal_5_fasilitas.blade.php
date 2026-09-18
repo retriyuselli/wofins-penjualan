@@ -36,8 +36,6 @@
     $penguranganItems = collect($product?->pengurangans ?? [])
         ->filter(fn ($item) => abs((float) ($item->amount ?? 0)) > 0)
         ->values();
-    $freePenguranganHtml = (string) ($product?->free_pengurangan ?? '');
-    $freePenguranganText = trim(str_replace("\xc2\xa0", ' ', strip_tags($freePenguranganHtml)));
 @endphp
 
 <ol class="pasal5-list">
@@ -66,12 +64,6 @@
                             <li>Fasilitas mengikuti rincian paket yang disepakati.</li>
                         @endif
                     @endforelse
-                    @if ($freePenguranganText !== '')
-                        <li>
-                            <span class="facility-title">Lainnya</span>
-                            <div class="item-desc">{!! \App\Support\SafeHtml::fromRichText($freePenguranganHtml) !!}</div>
-                        </li>
-                    @endif
                 </ul>
             </li>
         </ul>
