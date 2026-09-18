@@ -30,8 +30,12 @@
 
     $venueItems = $items->filter($isVenueItem);
     $woItems = $items->reject($isVenueItem);
-    $penambahanItems = $product?->penambahanHarga ?? collect();
-    $penguranganItems = $product?->pengurangans ?? collect();
+    $penambahanItems = collect($product?->penambahanHarga ?? [])
+        ->filter(fn ($item) => (float) ($item->harga_publish ?? 0) > 0)
+        ->values();
+    $penguranganItems = collect($product?->pengurangans ?? [])
+        ->filter(fn ($item) => abs((float) ($item->amount ?? 0)) > 0)
+        ->values();
     $freePenguranganHtml = (string) ($product?->free_pengurangan ?? '');
     $freePenguranganText = trim(str_replace("\xc2\xa0", ' ', strip_tags($freePenguranganHtml)));
 @endphp
@@ -73,20 +77,17 @@
         </ul>
     </li>
 
-    {{-- b. Penambahan --}}
-    <li>
-        <span class="facility-title">Penambahan</span>
-        @if ($penambahanItems->isNotEmpty())
+    @if ($penambahanItems->isNotEmpty())
+        <li>
+            <span class="facility-title">Penambahan</span>
             <ul>
                 @foreach ($penambahanItems as $item)
                     <li>
                         <div style="overflow: hidden;">
                             {{ strtoupper($item->vendor->name ?? 'Penambahan') }}
-                            @if (! is_null($item->harga_publish) && (float) $item->harga_publish > 0)
-                                <span class="price-right">
-                                    Rp {{ number_format((int) $item->harga_publish, 0, ',', '.') }},-
-                                </span>
-                            @endif
+                            <span class="price-right">
+                                Rp {{ number_format((int) $item->harga_publish, 0, ',', '.') }},-
+                            </span>
                         </div>
                         @if (! empty($item->description))
                             <div class="item-desc">{!! \App\Support\SafeHtml::fromRichText($item->description) !!}</div>
@@ -94,25 +95,20 @@
                     </li>
                 @endforeach
             </ul>
-        @else
-            <div class="item-desc">Tidak ada penambahan di luar paket.</div>
-        @endif
-    </li>
+        </li>
+    @endif
 
-    {{-- c. Pengurangan --}}
-    <li>
-        <span class="facility-title">Pengurangan</span>
-        @if ($penguranganItems->isNotEmpty())
+    @if ($penguranganItems->isNotEmpty())
+        <li>
+            <span class="facility-title">Pengurangan</span>
             <ul>
                 @foreach ($penguranganItems as $item)
                     <li>
                         <div style="overflow: hidden;">
                             {{ \Illuminate\Support\Str::ucfirst(\Illuminate\Support\Str::lower($item->description ?? 'Pengurangan')) }}
-                            @if (! is_null($item->amount) && (float) $item->amount != 0)
-                                <span class="price-right">
-                                    Rp {{ number_format((int) $item->amount, 0, ',', '.') }},-
-                                </span>
-                            @endif
+                            <span class="price-right">
+                                Rp {{ number_format((int) abs((float) $item->amount), 0, ',', '.') }},-
+                            </span>
                         </div>
                         @if (! empty($item->notes))
                             <div class="item-desc">{!! \App\Support\SafeHtml::fromRichText($item->notes) !!}</div>
@@ -120,8 +116,6 @@
                     </li>
                 @endforeach
             </ul>
-        @else
-            <div class="item-desc">Tidak ada pengurangan.</div>
-        @endif
-    </li>
+        </li>
+    @endif
 </ol>

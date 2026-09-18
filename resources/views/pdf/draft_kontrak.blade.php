@@ -85,7 +85,7 @@
         }
 
         $kopTopGap = 26;
-        $titleGap = 14;
+        $titleGap = ! empty($contract['is_spk']) ? 26 : 14;
         $textBlockHeight = 48;
         $headerContentHeight = max($textBlockHeight, (int) ($logoHeight ?: 50)) + 8;
         $pageTopMargin = $kopTopGap + $headerContentHeight + $titleGap;
