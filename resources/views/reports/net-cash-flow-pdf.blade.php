@@ -6,7 +6,7 @@
     <title>{{ $pageTitle }}</title>
     <style>
         @page {
-            margin: 110px 50px 20px 60px;
+            margin: 140px 50px 20px 60px;
         }
 
         body {
@@ -23,13 +23,14 @@
 
         .header {
             position: fixed;
-            top: -85px;
+            top: -115px;
             left: 0;
             right: 0;
-            height: 70px;
+            height: auto;
+            min-height: 95px;
             text-align: center;
             border-bottom: 2px solid #000;
-            padding-bottom: 1px;
+            padding-bottom: 10px;
         }
 
         .footer {
@@ -131,7 +132,7 @@
     <div class="header">
         <table style="width: 100%; margin-bottom: 1px; padding-bottom: 3px;" class="no-border">
             <tr class="no-border">
-                <td class="no-border p-0" style="line-height: 1; text-align: left;">
+                <td class="no-border p-0" style="line-height: 1.25; text-align: left; vertical-align: top; padding-bottom: 6px;">
                     @php
                         $company = $company ?? (\Illuminate\Support\Facades\Schema::hasTable('companies')
                             ? \App\Models\Company::query()->first()
@@ -141,8 +142,8 @@
                         $companyPhone = $company?->phone ?: '';
                         $companyEmail = $company?->email ?: '';
                     @endphp
-                    <div style="font-size: 14px; font-weight: bold; text-transform: uppercase;">{{ strtoupper($companyName) }}</div>
-                    <div style="font-size: 12px;">
+                    <div style="font-size: 14px; font-weight: bold; text-transform: uppercase; margin-bottom: 2px;">{{ strtoupper($companyName) }}</div>
+                    <div style="font-size: 12px; line-height: 1.35;">
                         @if ($companyAddress !== '')
                             Alamat : {{ $companyAddress }}<br>
                         @endif
