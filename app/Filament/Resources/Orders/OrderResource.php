@@ -199,7 +199,6 @@ class OrderResource extends Resource
             ->reorderable()
             ->cloneable()
             ->reactive()
-            ->live()
             ->itemLabel(fn (array $state): ?string => Product::find($state['product_id'])?->name)
             ->extraItemActions([
                 Action::make('openProduct')

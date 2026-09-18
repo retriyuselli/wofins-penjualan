@@ -14,6 +14,7 @@ use App\Models\Prospect;
 use App\Models\Vendor;
 use App\Support\Rupiah;
 use Exception;
+use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
@@ -222,6 +223,7 @@ class OrderForm
                                                 ->visibility('private')
                                                 ->downloadable()
                                                 ->openable()
+                                                ->fetchFileInformation(false)
                                                 ->acceptedFileTypes(['image/jpeg', 'image/png'])
                                                 ->helperText('Max 1MB. JPG or PNG only.'),
                                         ]),
@@ -468,8 +470,6 @@ class OrderForm
                             ->label('Lunas / Belum')
                             ->default(false)
                             ->disabled()
-                            ->reactive()
-                            ->live()
                             ->dehydrated()
                             ->onIcon('heroicon-m-bolt')
                             ->offIcon('heroicon-m-user')
@@ -532,9 +532,10 @@ class OrderForm
                     ->columnSpan(['lg' => 1])
                     ->hidden(fn (?Order $record) => $record === null),
             ])
-                ->columnSpan('full')
-                ->columns(3)
-                ->skippable(),
+            ->columnSpan('full')
+            ->columns(3)
+            ->skippable()
+            ->nextAction(fn (Action $action) => $action->livewireTarget('callSchemaComponentMethod')),
         ]);
     }
 

@@ -63,3 +63,9 @@
         overflow-y: auto;
     }
 }
+
+/* Wizard Next berkedip jika Livewire request lain men-trigger wire:loading tanpa target. */
+.fi-sc-wizard-footer > .fi-disabled {
+    opacity: 1;
+    pointer-events: auto;
+}
