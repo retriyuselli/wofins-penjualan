@@ -139,7 +139,7 @@
                         <p style="font-size: 11px; color: #666; font-family: 'Noto Sans', sans-serif;">Tgl: {{ $notaDinas->created_at->format('d F Y') }}</p>
                     </div>
                     <div>
-                        <img src="{{ asset('images/logomkiinv.png') }}" alt="Logo" style="height: 40px;">
+                        <img src="{{ $companyLogoUrl ?? asset('images/logomki.png') }}" alt="Logo Perusahaan" style="height: 40px; width: auto; max-width: 160px; object-fit: contain;">
                     </div>
                 </div>
             </div>
