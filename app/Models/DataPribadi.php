@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\PhoneNumber;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -129,11 +130,10 @@ class DataPribadi extends Model
      */
     public function setNomorTeleponAttribute($value)
     {
-        if (! is_null($value)) {
-            // Clean nomor telepon
-            $cleanedValue = preg_replace('/^(\+62|0)/', '', $value);
+        if (! is_null($value) && $value !== '') {
+            $cleanedValue = PhoneNumber::e164((string) $value) ?? '';
             $this->attributes['nomor_telepon_encrypted'] = Crypt::encryptString($cleanedValue);
-            $this->attributes['nomor_telepon'] = null; // Clear plaintext
+            $this->attributes['nomor_telepon'] = null;
         }
     }
 
@@ -213,7 +213,9 @@ class DataPribadi extends Model
     public function getFotoUrlAttribute(): ?string
     {
         if ($this->foto) {
-            return Storage::url($this->foto);
+            if (Storage::disk('public')->exists($this->foto)) {
+                return Storage::disk('public')->url($this->foto);
+            }
         }
 
         // Anda bisa mengembalikan URL default jika tidak ada foto

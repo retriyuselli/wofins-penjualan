@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Piutangs\Widgets;
 
 use App\Models\Piutang;
+use App\Support\PhoneNumber;
 use Filament\Actions\Action;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -124,13 +125,9 @@ class TopDebiturWidget extends BaseWidget
                         if (! $record->kontak_debitur) {
                             return null;
                         }
-                        $phone = preg_replace('/[^0-9]/', '', $record->kontak_debitur);
-                        if (substr($phone, 0, 1) === '0') {
-                            $phone = '62'.substr($phone, 1);
-                        }
-                        $message = urlencode("Halo {$record->nama_debitur}, kami ingin mengingatkan tentang sisa piutang Anda sebesar Rp ".number_format($record->total_sisa, 0, ',', '.').'. Mohon untuk segera melakukan pembayaran. Terima kasih.');
+                        $message = "Halo {$record->nama_debitur}, kami ingin mengingatkan tentang sisa piutang Anda sebesar Rp ".number_format($record->total_sisa, 0, ',', '.').'. Mohon untuk segera melakukan pembayaran. Terima kasih.';
 
-                        return "https://wa.me/{$phone}?text={$message}";
+                        return PhoneNumber::waMe($record->kontak_debitur, $message);
                     })
                     ->openUrlInNewTab()
                     ->visible(fn ($record) => $record->kontak_debitur),

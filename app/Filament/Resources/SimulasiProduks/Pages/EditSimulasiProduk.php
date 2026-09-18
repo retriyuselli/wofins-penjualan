@@ -6,6 +6,7 @@ use App\Filament\Resources\SimulasiProduks\SimulasiProdukResource;
 use App\Models\Prospect;
 use App\Models\SimulasiProduk;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
@@ -46,18 +47,26 @@ class EditSimulasiProduk extends EditRecord
                         ->success()
                         ->send();
                 }),
-            Action::make('penawaran')
-                ->label('Preview')
-                ->color('success')
-                ->icon('heroicon-o-eye')
-                ->url(fn (SimulasiProduk $record) => route('simulasi.show', $record))
-                ->openUrlInNewTab(),
-            Action::make('draftKontrak')
-                ->label('Draft Kontrak')
+            ActionGroup::make([
+                Action::make('penawaran')
+                    ->label('Preview')
+                    ->icon('heroicon-o-eye')
+                    ->url(fn (SimulasiProduk $record) => route('simulasi.show', $record))
+                    ->openUrlInNewTab(),
+                Action::make('draftKontrak')
+                    ->label('Draft Kontrak')
+                    ->icon('heroicon-o-document-text')
+                    ->url(fn (SimulasiProduk $record) => route('simulasi.draft-kontrak', $record))
+                    ->openUrlInNewTab(),
+                Action::make('downloadDraftKontrak')
+                    ->label('Download PDF')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->url(fn (SimulasiProduk $record) => route('simulasi.draft-kontrak.download', $record)),
+            ])
+                ->label('Dokumen')
+                ->icon('heroicon-o-document-duplicate')
                 ->color('primary')
-                ->icon('heroicon-o-document-text')
-                ->url(fn (SimulasiProduk $record) => route('simulasi.draft-kontrak', $record))
-                ->openUrlInNewTab(),
+                ->button(),
         ];
     }
 

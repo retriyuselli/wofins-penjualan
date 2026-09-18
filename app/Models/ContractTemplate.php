@@ -83,6 +83,7 @@ class ContractTemplate extends Model
             $copy->sections()->create($section->only([
                 'key',
                 'title',
+                'keterangan',
                 'body',
                 'sort_order',
                 'is_enabled',
@@ -100,6 +101,23 @@ class ContractTemplate extends Model
         ));
 
         foreach (ContractTemplateDefaults::sections() as $index => $section) {
+            $template->sections()->create([
+                ...$section,
+                'sort_order' => $index + 1,
+            ]);
+        }
+
+        return $template->load('sections');
+    }
+
+    public static function makeFromSpk(array $overrides = []): self
+    {
+        $template = static::query()->create(array_merge(
+            ContractTemplateDefaults::spkTemplateAttributes(),
+            $overrides,
+        ));
+
+        foreach (ContractTemplateDefaults::spkSections() as $index => $section) {
             $template->sections()->create([
                 ...$section,
                 'sort_order' => $index + 1,

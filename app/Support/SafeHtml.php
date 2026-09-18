@@ -140,7 +140,7 @@ class SafeHtml
         }
 
         if ($isImage && $scheme === 'data') {
-            return str_starts_with(strtolower($url), 'data:image/');
+            return (bool) preg_match('#^data:image/(png|jpe?g|gif|webp);#i', $url);
         }
 
         return false;

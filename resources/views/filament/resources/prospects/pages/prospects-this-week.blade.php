@@ -35,7 +35,7 @@
                                 </td>
                                 <td class="px-4 py-2 text-sm text-gray-700">{{ $p->venue ?? '-' }}</td>
                                 <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{ $p->user?->name ?? '-' }}</td>
-                                <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{ $p->phone ? '+62 '.$p->phone : '-' }}</td>
+                                <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{ \App\Support\PhoneNumber::display($p->phone) }}</td>
                                 <td class="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{{ optional($p->created_at)->format('d-m-Y H:i') }}</td>
                             </tr>
                         @empty

@@ -3,6 +3,7 @@
 namespace App\Imports;
 
 use App\Enums\StatusVendor;
+use App\Support\PhoneNumber;
 use App\Models\Category;
 use App\Models\Vendor;
 use Illuminate\Support\Collection;
@@ -221,11 +222,7 @@ class VendorsImport implements ToCollection, WithHeadingRow
             $value = number_format((float) $value, 0, '', '');
         }
 
-        $phone = preg_replace('/[^\d+]/', '', (string) $value) ?? '';
-        $phone = preg_replace('/^\+?62/', '', $phone) ?? $phone;
-        $phone = ltrim($phone, '0');
-
-        return $phone !== '' ? $phone : null;
+        return PhoneNumber::e164((string) $value);
     }
 
     private function formatDescription(?string $value): ?string

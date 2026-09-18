@@ -113,9 +113,9 @@ class DocumentForm
                                             ->schema([
                                                 FileUpload::make('file_path')
                                                     ->label('File')
-                                                    ->disk('public')
+                                                    ->disk('private')
                                                     ->directory('documents')
-                                                    ->visibility('public')
+                                                    ->visibility('private')
                                                     ->acceptedFileTypes(['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'image/jpeg', 'image/png'])
                                                     ->maxSize(10240) // 10MB
                                                     ->downloadable()

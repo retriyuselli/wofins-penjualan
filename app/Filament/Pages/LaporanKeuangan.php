@@ -769,9 +769,9 @@ class LaporanKeuangan extends Page
             // Set options untuk handle data banyak
             $pdf->setOptions([
                 'isHtml5ParserEnabled' => true,
-                'isPhpEnabled' => true,
+                'isPhpEnabled' => false,
                 'defaultFont' => 'Noto Sans',
-                'isRemoteEnabled' => true,
+                'isRemoteEnabled' => false,
                 'chroot' => public_path(),
                 'dpi' => 72, // Turunkan DPI untuk performa lebih baik
             ]);
@@ -804,7 +804,7 @@ class LaporanKeuangan extends Page
                     $pdf->setPaper('A4', 'landscape');
                     $pdf->setOptions([
                         'isHtml5ParserEnabled' => true,
-                        'isPhpEnabled' => true,
+                        'isPhpEnabled' => false,
                         'defaultFont' => 'Noto Sans',
                         'dpi' => 72,
                     ]);

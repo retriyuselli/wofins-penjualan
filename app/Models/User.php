@@ -366,7 +366,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
 
     public function canAccessPanel(Panel $panel): bool
     {
-        if ($this->status === 'terminated' || $this->status === 'inactive') {
+        if ($this->isAccessBlocked()) {
             return false;
         }
 
@@ -375,6 +375,21 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
         }
 
         return true;
+    }
+
+    public function isAccessBlocked(): bool
+    {
+        return in_array((string) $this->status, ['terminated', 'inactive'], true);
+    }
+
+    public function canViewAllOrders(): bool
+    {
+        return $this->hasAnyRole(['super_admin', 'Finance', 'admin_am']);
+    }
+
+    public function canViewOthersLeave(): bool
+    {
+        return $this->hasAnyRole(['super_admin', 'hr', 'admin']);
     }
 
     /**

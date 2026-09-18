@@ -3,8 +3,9 @@
 namespace App\Filament\Resources\Vendors\Schemas;
 
 use App\Models\Category;
-use App\Models\Vendor;
 use App\Models\User;
+use App\Models\Vendor;
+use App\Support\PhoneNumber;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Placeholder;
@@ -48,12 +49,9 @@ class VendorForm
                                             ->default(null)
                                             ->disabled()
                                             ->dehydrated(),
-                                        TextInput::make('phone')
-                                            ->tel()
-                                            ->required()
-                                            ->prefix('+62')
-                                            ->placeholder('812XXXXXXXX')
-                                            ->helperText('Enter number without leading zero'),
+                                        PhoneNumber::applyInput(
+                                            TextInput::make('phone')->required()
+                                        ),
                                         TextInput::make('address')
                                             ->default(null),
                                         TextInput::make('pic_name')

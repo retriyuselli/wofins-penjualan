@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Employees\Schemas;
 
 use App\Models\Employee;
 use App\Models\User;
+use App\Support\PhoneNumber;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
@@ -156,13 +157,9 @@ class EmployeeForm
                                                     ->helperText('Wajib unik — dipakai sebagai identitas karyawan.')
                                                     ->maxLength(255),
 
-                                                TextInput::make('phone')
-                                                    ->tel()
-                                                    ->required()
-                                                    ->maxLength(20)
-                                                    ->prefix('+62')
-                                                    ->telRegex('/^[0-9]{9,15}$/')
-                                                    ->placeholder('8xxxxxxxxx'),
+                                                PhoneNumber::applyInput(
+                                                    TextInput::make('phone')->required()
+                                                ),
 
                                                 TextInput::make('instagram')
                                                     ->prefix('@')
@@ -245,6 +242,8 @@ class EmployeeForm
                                     ->schema([
                                         FileUpload::make('kontrak')
                                             ->label('Kontrak Kerja')
+                                            ->disk('private')
+                                            ->visibility('private')
                                             ->directory('employee-contracts')
                                             ->acceptedFileTypes(['application/pdf'])
                                             ->openable()
@@ -293,7 +292,7 @@ class EmployeeForm
             $set('email', $user->email);
         }
 
-        $phone = self::normalizePhone($user->phone_number);
+        $phone = PhoneNumber::inputDisplay($user->phone_number);
         if ($phone) {
             $set('phone', $phone);
         }
@@ -315,19 +314,4 @@ class EmployeeForm
         }
     }
 
-    private static function normalizePhone(?string $phone): ?string
-    {
-        $digits = preg_replace('/\D+/', '', (string) $phone) ?: '';
-        if ($digits === '') {
-            return null;
-        }
-
-        if (str_starts_with($digits, '62')) {
-            $digits = substr($digits, 2);
-        }
-
-        $digits = ltrim($digits, '0');
-
-        return $digits !== '' ? $digits : null;
-    }
 }

@@ -362,7 +362,7 @@ class InvoiceOrderController extends Controller
 
         // Handle file upload if present
         if ($request->hasFile('image')) {
-            $path = $request->file('image')->store('payment-proofs', 'public');
+            $path = $request->file('image')->store('payment-proofs', 'private');
             $validated['image'] = $path;
         }
 

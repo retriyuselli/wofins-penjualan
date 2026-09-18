@@ -197,14 +197,22 @@ class OrdersTable
                     ])
                     ->columns(1)
                     ->query(function (Builder $query, array $data): Builder {
-                        return $query->when($data['date_type'] && ($data['from_date'] || $data['until_date']), function (Builder $query) use ($data) {
+                        $allowedDateTypes = ['all', 'date_lamaran', 'date_akad', 'date_resepsi', 'closing_date'];
+                        if (! in_array($data['date_type'] ?? '', $allowedDateTypes, true)) {
+                            return $query;
+                        }
+
+                        $sortOrder = strtoupper((string) ($data['sort_order'] ?? ''));
+                        $sortOrder = in_array($sortOrder, ['ASC', 'DESC'], true) ? $sortOrder : 'ASC';
+
+                        return $query->when($data['date_type'] && ($data['from_date'] || $data['until_date']), function (Builder $query) use ($data, $sortOrder) {
                             if ($data['date_type'] === 'closing_date') {
                                 return $query
                                     ->when($data['from_date'], fn ($q) => $q->whereDate('closing_date', '>=', $data['from_date']))
                                     ->when($data['until_date'], fn ($q) => $q->whereDate('closing_date', '<=', $data['until_date']));
                             }
 
-                            return $query->whereHas('prospect', function ($query) use ($data) {
+                            return $query->whereHas('prospect', function ($query) use ($data, $sortOrder) {
                                 if ($data['date_type'] === 'all') {
                                     $query->where(function ($subQuery) use ($data) {
                                         $subQuery->when($data['from_date'], function ($q) use ($data) {
@@ -233,7 +241,7 @@ class OrdersTable
                                                 COALESCE(date_lamaran, '9999-12-31'),
                                                 COALESCE(date_akad, '9999-12-31'),
                                                 COALESCE(date_resepsi, '9999-12-31')
-                                            ) ".$data['sort_order'],
+                                            ) ".$sortOrder,
                                         );
                                     }
                                 } else {
@@ -248,7 +256,7 @@ class OrdersTable
                                     });
 
                                     if ($data['sort_order'] ?? null) {
-                                        $query->orderBy($dateField, $data['sort_order']);
+                                        $query->orderBy($dateField, $sortOrder);
                                     }
                                 }
 

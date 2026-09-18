@@ -14,6 +14,14 @@ use Illuminate\Support\Facades\Schema;
 
 class ReconciliationController extends Controller
 {
+    private const SOURCE_TABLES = [
+        'data_pembayarans',
+        'expenses',
+        'expense_ops',
+        'pendapatan_lains',
+        'pengeluaran_lains',
+    ];
+
     protected $reconciliationService;
 
     public function __construct()
@@ -86,7 +94,13 @@ class ReconciliationController extends Controller
             $bankItem = BankReconciliationItem::findOrFail($request->bank_item_id);
             \Illuminate\Support\Facades\Gate::authorize('update', $bankItem);
 
-            $table = $request->source_table;
+            $table = $this->allowedSourceTable($request->source_table);
+            if ($table === null) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tabel sumber tidak diizinkan.',
+                ], 400);
+            }
 
             if (! Schema::hasColumn($table, 'reconciliation_status')) {
                 return response()->json([
@@ -193,8 +207,13 @@ class ReconciliationController extends Controller
             $bankItem = BankReconciliationItem::findOrFail($request->bank_item_id);
             \Illuminate\Support\Facades\Gate::authorize('update', $bankItem);
 
-            // Reset reconciliation status in source table
-            $table = $request->source_table;
+            $table = $this->allowedSourceTable($request->source_table);
+            if ($table === null) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tabel sumber tidak diizinkan.',
+                ], 400);
+            }
 
             // Check if the table has reconciliation fields
             if (! Schema::hasColumn($table, 'reconciliation_status')) {
@@ -242,5 +261,12 @@ class ReconciliationController extends Controller
                 'message' => 'Gagal membatalkan match: '.$e->getMessage(),
             ], 500);
         }
+    }
+
+    private function allowedSourceTable(mixed $table): ?string
+    {
+        $table = is_string($table) ? $table : '';
+
+        return in_array($table, self::SOURCE_TABLES, true) ? $table : null;
     }
 }

@@ -30,7 +30,6 @@ use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\HtmlString;
 
 class NotaDinasDetailsTable
@@ -337,7 +336,7 @@ class NotaDinasDetailsTable
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('primary')
                     ->visible(fn (NotaDinasDetail $record): bool => ! empty($record->invoice_file))
-                    ->url(fn (NotaDinasDetail $record): string => Storage::url($record->invoice_file))
+                    ->url(fn (NotaDinasDetail $record): string => route('profile.admin-tools.nota-dinas-details.invoice.view', $record))
                     ->openUrlInNewTab(),
                 Action::make('view_expense_records')
                     ->label('Lihat Record Expense')
@@ -361,8 +360,8 @@ class NotaDinasDetailsTable
                             $content .= '<h3 class="font-semibold text-green-800 mb-2">💒 Expense (Wedding) - '.$expenses->count().' record</h3>';
                             foreach ($expenses as $expense) {
                                 $content .= '<div class="border-l-4 border-green-400 pl-3 py-2 bg-white rounded mb-2">';
-                                $content .= '<p class="text-sm font-medium">Vendor: '.($expense->vendor?->name ?? 'N/A').'</p>';
-                                $content .= '<p class="text-sm text-gray-600">Order: '.($expense->order?->name ?? 'N/A').'</p>';
+                                $content .= '<p class="text-sm font-medium">Vendor: '.e((string) ($expense->vendor?->name ?? 'N/A')).'</p>';
+                                $content .= '<p class="text-sm text-gray-600">Order: '.e((string) ($expense->order?->name ?? 'N/A')).'</p>';
                                 $content .= '<p class="text-sm text-gray-600">Amount: Rp '.number_format($expense->amount, 0, ',', '.').'</p>';
                                 $content .= '<p class="text-xs text-gray-500">Created: '.$expense->created_at->format('d-m-Y H:i').'</p>';
                                 $content .= '</div>';
@@ -376,8 +375,8 @@ class NotaDinasDetailsTable
                             $content .= '<h3 class="font-semibold text-blue-800 mb-2">🏢 Expense Ops - '.$expenseOps->count().' record</h3>';
                             foreach ($expenseOps as $ops) {
                                 $content .= '<div class="border-l-4 border-blue-400 pl-3 py-2 bg-white rounded mb-2">';
-                                $content .= '<p class="text-sm font-medium">Vendor: '.($ops->vendor?->name ?? 'N/A').'</p>';
-                                $content .= '<p class="text-sm text-gray-600">Description: '.($ops->description ?? 'N/A').'</p>';
+                                $content .= '<p class="text-sm font-medium">Vendor: '.e((string) ($ops->vendor?->name ?? 'N/A')).'</p>';
+                                $content .= '<p class="text-sm text-gray-600">Description: '.e((string) ($ops->description ?? 'N/A')).'</p>';
                                 $content .= '<p class="text-sm text-gray-600">Amount: Rp '.number_format($ops->amount, 0, ',', '.').'</p>';
                                 $content .= '<p class="text-xs text-gray-500">Created: '.$ops->created_at->format('d-m-Y H:i').'</p>';
                                 $content .= '</div>';
@@ -391,7 +390,7 @@ class NotaDinasDetailsTable
                             $content .= '<h3 class="font-semibold text-yellow-800 mb-2">📋 Pengeluaran Lain - '.$pengeluaranLains->count().' record</h3>';
                             foreach ($pengeluaranLains as $lain) {
                                 $content .= '<div class="border-l-4 border-yellow-400 pl-3 py-2 bg-white rounded mb-2">';
-                                $content .= '<p class="text-sm font-medium">Description: '.($lain->description ?? 'N/A').'</p>';
+                                $content .= '<p class="text-sm font-medium">Description: '.e((string) ($lain->description ?? 'N/A')).'</p>';
                                 $content .= '<p class="text-sm text-gray-600">Category: '.($lain->category ?? 'N/A').'</p>';
                                 $content .= '<p class="text-sm text-gray-600">Amount: Rp '.number_format($lain->amount, 0, ',', '.').'</p>';
                                 $content .= '<p class="text-xs text-gray-500">Created: '.$lain->created_at->format('d-m-Y H:i').'</p>';

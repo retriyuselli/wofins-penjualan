@@ -136,6 +136,7 @@ class OrderForm
                             ->required()
                             ->helperText('pastikan kontrak sudah semua ditanda tangani')
                             ->openable()
+                            ->disk('private')
                             ->directory('doc_kontrak')
                             ->downloadable()
                             ->acceptedFileTypes(['application/pdf']),
@@ -145,6 +146,7 @@ class OrderForm
                             ->required()
                             ->helperText('pastikan file persetujuan produk sudah semua ditanda tangani (one up level)')
                             ->openable()
+                            ->disk('private')
                             ->directory('agreement_product')
                             ->downloadable()
                             ->acceptedFileTypes(['application/pdf']),
@@ -222,9 +224,9 @@ class OrderForm
                                                 ->label('Payment Proof')
                                                 ->image()
                                                 ->maxSize(1280)
-                                                ->disk('public')
+                                                ->disk('private')
                                                 ->directory('payment-proofs/'.date('Y/m'))
-                                                ->visibility('public')
+                                                ->visibility('private')
                                                 ->downloadable()
                                                 ->openable()
                                                 ->acceptedFileTypes(['image/jpeg', 'image/png'])

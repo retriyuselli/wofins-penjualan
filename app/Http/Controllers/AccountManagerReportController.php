@@ -293,10 +293,11 @@ class AccountManagerReportController extends Controller
         if (class_exists(LeaveRequest::class)) {
             $leaveData = LeaveRequest::where('user_id', $userId)
                 ->where(function ($query) use ($year, $month) {
-                    $query->whereYear('start_date', $year)->whereMonth('start_date', $month);
-                })
-                ->orWhere(function ($query) use ($year, $month) {
-                    $query->whereYear('end_date', $year)->whereMonth('end_date', $month);
+                    $query->where(function ($q) use ($year, $month) {
+                        $q->whereYear('start_date', $year)->whereMonth('start_date', $month);
+                    })->orWhere(function ($q) use ($year, $month) {
+                        $q->whereYear('end_date', $year)->whereMonth('end_date', $month);
+                    });
                 })
                 ->with('leaveType')
                 ->get();

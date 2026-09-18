@@ -216,8 +216,7 @@
                             </button>
 
                             <p class="text-center text-sm text-[var(--wf-muted)]">
-                                Belum punya akun?
-                                <a href="{{ route('front.register') }}" class="font-bold text-[var(--wf-navy)] hover:text-[var(--wf-gold)]">Daftar sekarang</a>
+                                Belum punya akun? Hubungi administrator untuk dibuatkan akses.
                             </p>
                             <p class="text-center text-xs text-[var(--wf-muted)]">
                                 Butuh demo?

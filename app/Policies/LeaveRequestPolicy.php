@@ -19,7 +19,15 @@ class LeaveRequestPolicy
 
     public function view(AuthUser $authUser, LeaveRequest $leaveRequest): bool
     {
-        return $authUser->can('View:LeaveRequest');
+        if (! $authUser->can('View:LeaveRequest')) {
+            return false;
+        }
+
+        if ((int) $leaveRequest->user_id === (int) $authUser->id) {
+            return true;
+        }
+
+        return $authUser instanceof \App\Models\User && $authUser->canViewOthersLeave();
     }
 
     public function create(AuthUser $authUser): bool

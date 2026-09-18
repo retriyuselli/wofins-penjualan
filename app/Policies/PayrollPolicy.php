@@ -19,7 +19,15 @@ class PayrollPolicy
 
     public function view(AuthUser $authUser, Payroll $payroll): bool
     {
-        return $authUser->can('View:Payroll');
+        if (! $authUser->can('View:Payroll')) {
+            return false;
+        }
+
+        if ((int) $payroll->user_id === (int) $authUser->id) {
+            return true;
+        }
+
+        return $authUser instanceof \App\Models\User && $authUser->canViewOthersLeave();
     }
 
     public function create(AuthUser $authUser): bool

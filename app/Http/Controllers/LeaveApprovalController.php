@@ -10,6 +10,8 @@ class LeaveApprovalController extends Controller
 {
     public function show(LeaveRequest $leaveRequest)
     {
+        \Illuminate\Support\Facades\Gate::authorize('view', $leaveRequest);
+
         // Check if the leave request is approved
         if ($leaveRequest->status !== 'approved') {
             abort(404, 'Approval detail not found or request not approved.');

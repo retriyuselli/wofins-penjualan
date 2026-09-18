@@ -18,7 +18,7 @@ class LeaveRequestsTable
         return $table
             ->modifyQueryUsing(function (Builder $query) {
                 $user = Auth::user();
-                if ($user && ! $user->roles->contains('name', 'super_admin')) {
+                if ($user && ! $user->canViewOthersLeave()) {
                     $query->where('user_id', $user->id);
                 }
             })

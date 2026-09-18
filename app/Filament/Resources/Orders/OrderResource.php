@@ -115,24 +115,12 @@ class OrderResource extends Resource
             'items.product:id,name',
         ]);
 
-        if (Auth::check()) {
-            $uid = Auth::id();
-            if ($uid) {
-                $isPrivileged = DB::table('model_has_roles')
-                    ->join('roles', 'model_has_roles.role_id', '=', 'roles.id')
-                    ->where('model_has_roles.model_type', User::class)
-                    ->where('model_has_roles.model_id', $uid)
-                    ->whereIn('roles.name', ['super_admin', 'Finance', 'admin_am'])
-                    ->exists();
-
-                if ($isPrivileged) {
-                    return $query;
-                }
-            }
+        $user = Auth::user();
+        if ($user instanceof User && $user->canViewAllOrders()) {
+            return $query;
         }
 
-        // Other users can only access their own orders (as Account Manager)
-        return $query->where('user_id', Auth::user()->id);
+        return $query->where('user_id', Auth::id());
     }
 
     public static function getItemsRepeater(): Repeater

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Users\Schemas;
 
+use App\Support\PhoneNumber;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\FileUpload;
@@ -14,6 +15,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
+use Filament\Support\RawJs;
 use Spatie\Permission\Models\Role;
 
 class UserForm
@@ -109,11 +111,10 @@ class UserForm
                                     ->schema([
                                         Grid::make(2)
                                             ->schema([
-                                                TextInput::make('phone_number')
-                                                    ->label('Nomor Telepon')
-                                                    ->tel()
-                                                    ->maxLength(255)
-                                                    ->placeholder('08xx-xxxx-xxxx'),
+                                                PhoneNumber::applyInput(
+                                                    TextInput::make('phone_number')
+                                                        ->label('Nomor Telepon')
+                                                ),
 
                                                 DatePicker::make('date_of_birth')
                                                     ->label('Tanggal Lahir')
@@ -184,7 +185,10 @@ class UserForm
                                                 TextInput::make('gaji_pokok_base')
                                                     ->label('Gaji Pokok Base')
                                                     ->numeric()
-                                                    ->prefix('Rp')
+                                                    ->prefix('Rp. ')
+                                                    ->mask(RawJs::make('$money($input)'))
+                                                    ->stripCharacters(',')
+                                                    ->dehydrateStateUsing(fn ($state) => (int) preg_replace('/[^\d]/', '', (string) $state))
                                                     ->default(0)
                                                     ->minValue(0)
                                                     ->helperText('Nilai dasar gaji pokok untuk usulan payroll'),
@@ -192,7 +196,10 @@ class UserForm
                                                 TextInput::make('tunjangan_base')
                                                     ->label('Tunjangan Base')
                                                     ->numeric()
-                                                    ->prefix('Rp')
+                                                    ->prefix('Rp. ')
+                                                    ->mask(RawJs::make('$money($input)'))
+                                                    ->stripCharacters(',')
+                                                    ->dehydrateStateUsing(fn ($state) => (int) preg_replace('/[^\d]/', '', (string) $state))
                                                     ->default(0)
                                                     ->minValue(0)
                                                     ->helperText('Nilai dasar tunjangan untuk usulan payroll'),

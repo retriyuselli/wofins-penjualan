@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Prospects\Schemas;
 
+use App\Support\PhoneNumber;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -95,13 +96,9 @@ class ProspectForm
                                             ->maxLength(255),
                                     ]),
 
-                                TextInput::make('phone')
-                                    ->tel()
-                                    ->required()
-                                    ->prefix('+62')
-                                    ->regex('/^[0-9]{8,15}$/')
-                                    ->placeholder('812XXXXXXXX')
-                                    ->helperText('Masukkan nomor tanpa angka 0 di depan'),
+                                PhoneNumber::applyInput(
+                                    TextInput::make('phone')->required()
+                                ),
 
                                 TextInput::make('address')
                                     ->label('Alamat')

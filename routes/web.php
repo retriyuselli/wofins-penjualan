@@ -43,7 +43,7 @@ $authNoStore = ['filament.auth', 'no-store'];
 $authNoStoreThrottle = [...$authNoStore, 'throttle:60,1'];
 $phpInfoMiddleware = [...$authNoStore, 'super-admin', 'throttle:10,1'];
 
-if (app()->isLocal() || config('app.debug')) {
+if (app()->isLocal()) {
     Route::get('/_phpinfo', function () {
         ob_start();
         phpinfo();
@@ -79,6 +79,10 @@ Route::get('/simulasi/{record:slug}/download-pdf', [SimulasiDisplayController::c
 // Rute untuk draft kontrak simulasi produk
 Route::get('/simulasi/{record:slug}/draft-kontrak', [SimulasiDisplayController::class, 'draftKontrak'])
     ->name('simulasi.draft-kontrak')
+    ->middleware($authNoStoreThrottle);
+
+Route::get('/simulasi/{record:slug}/draft-kontrak/download', [SimulasiDisplayController::class, 'downloadDraftKontrak'])
+    ->name('simulasi.draft-kontrak.download')
     ->middleware($authNoStoreThrottle);
 
 // USER REGISTRATION FORM PDF
@@ -130,6 +134,11 @@ Route::put('/leave/{id}', [LeaveRequestController::class, 'update'])
 Route::get('/leave/status', [LeaveRequestController::class, 'status'])
     ->name('leave.status')
     ->middleware($authNoStore);
+
+Route::get('/leave/document/download/{path}', [LeaveRequestController::class, 'downloadDocument'])
+    ->name('leave.document.download')
+    ->where('path', '.*')
+    ->middleware($authNoStoreThrottle);
 
 // DOCUMENT
 Route::get('/document/{record}/stream', [DocumentController::class, 'stream'])
@@ -273,7 +282,7 @@ $publicDataPribadi = ['no-store', 'public-form'];
 // Form publik: boleh diakses tanpa login. Daftar data tetap wajib login.
 Route::get('/data-pribadi/tambah', [FrontendDataPribadiController::class, 'create'])
     ->name('data-pribadi.create')
-    ->middleware([...$publicDataPribadi, 'throttle:30,1']);
+    ->middleware([...$publicDataPribadi, 'signed', 'throttle:30,1']);
 
 Route::get('/data-pribadi', [FrontendDataPribadiController::class, 'index'])
     ->name('data-pribadi.index')

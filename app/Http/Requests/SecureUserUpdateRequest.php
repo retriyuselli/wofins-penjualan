@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Support\PhoneNumber;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
@@ -133,7 +134,7 @@ class SecureUserUpdateRequest extends FormRequest
         }
 
         // Remove all characters except numbers, +, -, (, ), and spaces
-        return preg_replace('/[^0-9+\-\s()]/', '', $value);
+        return PhoneNumber::e164($value);
     }
 
     /**

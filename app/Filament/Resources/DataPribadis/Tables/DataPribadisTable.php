@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\DataPribadis\Tables;
 
+use App\Support\PhoneNumber;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
@@ -34,7 +35,7 @@ class DataPribadisTable
                     ->icon('heroicon-s-envelope'),
                 TextColumn::make('nomor_telepon')
                     ->searchable()
-                    ->prefix('+62')
+                    ->formatStateUsing(fn (?string $state) => PhoneNumber::display($state))
                     ->icon('heroicon-s-phone'),
                 TextColumn::make('tanggal_lahir')
                     ->date('d M Y')

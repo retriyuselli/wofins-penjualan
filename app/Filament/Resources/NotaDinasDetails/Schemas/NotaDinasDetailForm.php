@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\NotaDinasDetails\Schemas;
 
+use App\Support\PhoneNumber;
 use App\Enums\OrderStatus;
 use App\Enums\PengeluaranJenis;
 use App\Models\NotaDinasDetail;
@@ -71,6 +72,7 @@ class NotaDinasDetailForm
                             ->label('File Invoice')
                             ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png'])
                             ->maxSize(1024)
+                            ->disk('private')
                             ->directory('nota-dinas/invoices')
                             ->visibility('private')
                             ->downloadable()
@@ -556,14 +558,11 @@ class NotaDinasDetailForm
                                                     ->maxLength(255)
                                                     ->placeholder('Nama PIC/Contact Person'),
 
-                                                TextInput::make('phone')
-                                                    ->label('No. Telepon')
-                                                    ->tel()
-                                                    ->required()
-                                                    ->prefix('+62')
-                                                    ->maxLength(255)
-                                                    ->placeholder('812XXXXXXXX')
-                                                    ->helperText('Tanpa angka 0 di depan'),
+                                                PhoneNumber::applyInput(
+                                                    TextInput::make('phone')
+                                                        ->label('No. Telepon')
+                                                        ->required()
+                                                ),
 
                                                 Textarea::make('address')
                                                     ->label('Alamat')

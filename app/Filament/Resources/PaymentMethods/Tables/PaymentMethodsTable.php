@@ -166,8 +166,9 @@ class PaymentMethodsTable
                                                      • BCA, BNI, BRI: Format standar
                                                      • Format generic dengan kolom: Tanggal, Keterangan, Debit/Kredit, Saldo')
                                         ->required()
-                                        ->disk('public')
+                                        ->disk('private')
                                         ->directory('bank-statements')
+                                        ->visibility('private')
                                         ->preserveFilenames()
                                         ->maxSize(10240),
                                     \Filament\Schemas\Components\Grid::make(2)->schema([

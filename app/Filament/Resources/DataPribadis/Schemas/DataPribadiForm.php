@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\DataPribadis\Schemas;
 
+use App\Support\PhoneNumber;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\RichEditor;
@@ -31,12 +32,9 @@ class DataPribadiForm
                             ->maxLength(255)
                             ->placeholder('contoh@domain.com')
                             ->unique(ignoreRecord: true),
-                        TextInput::make('nomor_telepon')
-                            ->tel()
-                            ->prefix('+62')
-                            ->placeholder('81234567890')
-                            ->telRegex('/^[0-9]{9,15}$/')
-                            ->maxLength(20),
+                        PhoneNumber::applyInput(
+                            TextInput::make('nomor_telepon')
+                        ),
                         DatePicker::make('tanggal_lahir')
                             ->native(false)
                             ->displayFormat('d/m/Y'),

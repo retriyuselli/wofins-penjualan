@@ -9,7 +9,10 @@ use Carbon\Carbon;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class LeaveRequestController extends Controller
 {
@@ -91,15 +94,8 @@ class LeaveRequestController extends Controller
 
         // Handle file uploads if any
         if ($request->hasFile('documents')) {
-            $uploadedFiles = [];
-            foreach ($request->file('documents') as $file) {
-                $filename = time().'_'.$file->getClientOriginalName();
-                $path = $file->storeAs('leave-documents', $filename, 'public');
-                $uploadedFiles[] = $path;
-            }
-
             $leaveRequest->update([
-                'documents' => json_encode($uploadedFiles),
+                'documents' => $this->storeLeaveDocuments($request->file('documents')),
             ]);
         }
 
@@ -142,15 +138,8 @@ class LeaveRequestController extends Controller
 
         // Handle file uploads if any
         if ($request->hasFile('documents')) {
-            $uploadedFiles = [];
-            foreach ($request->file('documents') as $file) {
-                $filename = time().'_'.$file->getClientOriginalName();
-                $path = $file->storeAs('leave-documents', $filename, 'public');
-                $uploadedFiles[] = $path;
-            }
-
             $leaveRequest->update([
-                'documents' => json_encode($uploadedFiles),
+                'documents' => $this->storeLeaveDocuments($request->file('documents')),
             ]);
         }
 
@@ -236,40 +225,69 @@ class LeaveRequestController extends Controller
         }
     }
 
-    public function downloadDocument($path)
+    public function downloadDocument(string $path)
     {
-        try {
-            // Log untuk debugging - tampilkan semua info yang diterima
-            Log::info('=== DOWNLOAD DOCUMENT DEBUG ===');
-            Log::info('Raw path received: '.$path);
-            Log::info('URL encoded check: '.urlencode($path));
-            Log::info('URL decoded: '.urldecode($path));
-
-            // Decode path
-            $decodedPath = urldecode($path);
-            Log::info('Final decoded path: '.$decodedPath);
-
-            // Pastikan file ada
-            $fullPath = storage_path('app/public/'.$decodedPath);
-            Log::info('Full file path: '.$fullPath);
-            Log::info('File exists check: '.(file_exists($fullPath) ? 'YES' : 'NO'));
-
-            if (file_exists($fullPath)) {
-                Log::info('File found! Size: '.filesize($fullPath).' bytes');
-
-                // Return simple file response for testing
-                return response()->file($fullPath);
-            } else {
-                Log::error('File NOT FOUND at: '.$fullPath);
-
-                return response('File not found: '.$decodedPath, 404);
-            }
-
-        } catch (Exception $e) {
-            Log::error('Download exception: '.$e->getMessage());
-            Log::error('Stack trace: '.$e->getTraceAsString());
-
-            return response('Error: '.$e->getMessage(), 500);
+        $user = Auth::user();
+        if (! $user instanceof User) {
+            abort(403);
         }
+
+        $decodedPath = ltrim(urldecode($path), '/');
+        if ($decodedPath === '' || str_contains($decodedPath, '..')) {
+            abort(400, 'Path tidak valid.');
+        }
+
+        $leaveRequests = LeaveRequest::query()
+            ->when(! $user->canViewOthersLeave(), fn ($q) => $q->where('user_id', $user->id))
+            ->get(['id', 'user_id', 'documents']);
+
+        $matched = null;
+        foreach ($leaveRequests as $leaveRequest) {
+            $docs = is_array($leaveRequest->documents) ? $leaveRequest->documents : [];
+            foreach ($docs as $doc) {
+                $normalized = ltrim((string) $doc, '/');
+                if ($normalized === $decodedPath || basename($normalized) === basename($decodedPath)) {
+                    $matched = $leaveRequest;
+                    $decodedPath = $normalized;
+                    break 2;
+                }
+            }
+        }
+
+        if (! $matched) {
+            abort(403);
+        }
+
+        Gate::authorize('view', $matched);
+
+        foreach (['private', 'public'] as $disk) {
+            if (Storage::disk($disk)->exists($decodedPath)) {
+                return Storage::disk($disk)->response($decodedPath);
+            }
+        }
+
+        abort(404, 'File tidak ditemukan.');
+    }
+
+    /**
+     * @param  array<int, \Illuminate\Http\UploadedFile>  $files
+     * @return list<string>
+     */
+    private function storeLeaveDocuments(array $files): array
+    {
+        $uploadedFiles = [];
+        foreach ($files as $file) {
+            $extension = strtolower((string) ($file->guessExtension() ?: $file->extension() ?: 'bin'));
+            if (! in_array($extension, ['pdf', 'jpg', 'jpeg', 'png'], true)) {
+                continue;
+            }
+            $uploadedFiles[] = $file->storeAs(
+                'leave-documents',
+                Str::uuid()->toString().'.'.$extension,
+                'private'
+            );
+        }
+
+        return $uploadedFiles;
     }
 }

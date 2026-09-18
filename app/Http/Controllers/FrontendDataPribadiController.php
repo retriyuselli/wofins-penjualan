@@ -54,7 +54,7 @@ class FrontendDataPribadiController extends Controller
             $validated['foto'] = $file->storeAs(
                 'data-pribadi-fotos',
                 Str::uuid()->toString().'.'.$extension,
-                'public'
+                'private'
             );
         } elseif (isset($validated['foto']) && ! is_string($validated['foto'])) {
             unset($validated['foto']);
@@ -70,6 +70,8 @@ class FrontendDataPribadiController extends Controller
 
     public function index(Request $request): View
     {
+        \Illuminate\Support\Facades\Gate::authorize('viewAny', DataPribadi::class);
+
         $query = DataPribadi::query();
 
         if ($request->filled('search')) {

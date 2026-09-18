@@ -95,6 +95,23 @@ class SimulasiDisplayController extends Controller
 
     public function draftKontrak(SimulasiProduk $record)
     {
+        [$pdf, $fileName] = $this->buildDraftKontrakPdf($record);
+
+        return $pdf->stream($fileName);
+    }
+
+    public function downloadDraftKontrak(SimulasiProduk $record)
+    {
+        [$pdf, $fileName] = $this->buildDraftKontrakPdf($record);
+
+        return $pdf->download($fileName);
+    }
+
+    /**
+     * @return array{0: \Barryvdh\DomPDF\PDF, 1: string}
+     */
+    private function buildDraftKontrakPdf(SimulasiProduk $record): array
+    {
         Gate::authorize('view', $record);
 
         $items = collect();
@@ -168,16 +185,14 @@ class SimulasiDisplayController extends Controller
 
         $pdf = Pdf::loadView('pdf.draft_kontrak', $data);
         $pdf->setPaper('a4', 'portrait');
-
-        // Configure DomPDF for better compatibility
         $pdf->setOptions([
             'isHtml5ParserEnabled' => true,
-            'isRemoteEnabled' => true,
+            'isRemoteEnabled' => false,
             'defaultFont' => 'sans-serif',
         ]);
 
         $fileName = 'Draft_Kontrak_'.$record->slug.'_'.now()->format('Ymd').'.pdf';
 
-        return $pdf->stream($fileName);
+        return [$pdf, $fileName];
     }
 }

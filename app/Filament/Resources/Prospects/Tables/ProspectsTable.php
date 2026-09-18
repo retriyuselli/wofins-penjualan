@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Prospects\Tables;
 use App\Enums\OrderStatus;
 use App\Filament\Resources\Prospects\ProspectResource;
 use App\Models\Prospect;
+use App\Support\PhoneNumber;
 use Carbon\Carbon;
 use Exception;
 use Filament\Actions\Action;
@@ -114,7 +115,7 @@ class ProspectsTable
                     ->copyable()
                     ->copyMessage('Nomor telepon berhasil disalin')
                     ->copyMessageDuration(1500)
-                    ->formatStateUsing(fn (?string $state) => $state ? '+62 '.$state : ''),
+                    ->formatStateUsing(fn (?string $state) => PhoneNumber::display($state)),
 
                 TextColumn::make('date_lamaran')
                     ->label('Tanggal Lamaran')

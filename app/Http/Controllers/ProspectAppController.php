@@ -185,7 +185,7 @@ class ProspectAppController extends Controller
                     'dpi' => 150,
                     'defaultFont' => 'sans-serif',
                     'isHtml5ParserEnabled' => true,
-                    'isRemoteEnabled' => true,
+                    'isRemoteEnabled' => false,
                 ]);
 
             $filename = 'invoice-'.$prospectApp->company_name.'-'.$prospectApp->id.'.pdf';

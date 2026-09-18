@@ -6,6 +6,7 @@ use App\Filament\Resources\DataPribadis\DataPribadiResource;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
+use Illuminate\Support\Facades\URL;
 
 class ListDataPribadis extends ListRecords
 {
@@ -18,7 +19,8 @@ class ListDataPribadis extends ListRecords
             Action::make('linkToDataPribadi')
                 ->label('Link to Data Pribadi')
                 ->icon('heroicon-o-link')
-                ->url(route('data-pribadi.create')) // Menggunakan nama rute yang benar
+                ->url(fn (): string => URL::temporarySignedRoute('data-pribadi.create', now()->addDays(14)))
+                ->openUrlInNewTab()
                 ->color('primary'),
         ];
     }

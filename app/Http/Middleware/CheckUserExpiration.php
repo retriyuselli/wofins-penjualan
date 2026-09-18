@@ -33,6 +33,15 @@ class CheckUserExpiration
                 $user = User::find($user->id);
             }
 
+            if ($user && $user->isAccessBlocked()) {
+                Auth::logout();
+
+                $appUrl = config('app.url') ?: url('/');
+
+                return response()->redirectTo($appUrl)
+                    ->with('error', 'Akun Anda tidak aktif. Hubungi administrator.');
+            }
+
             // Check if user is expired
             if ($user && method_exists($user, 'isExpired') && $user->isExpired()) {
                 Auth::logout();

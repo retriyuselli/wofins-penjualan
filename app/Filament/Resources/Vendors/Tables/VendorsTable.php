@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Vendors\Tables;
 
 use App\Models\Vendor;
+use App\Support\PhoneNumber;
 use Carbon\Carbon;
 use Exception;
 use Filament\Actions\Action;
@@ -77,7 +78,7 @@ class VendorsTable
                     ->copyable()
                     ->copyMessage('Phone number copied')
                     ->copyMessageDuration(1500)
-                    ->formatStateUsing(fn ($state) => $state ? '+62 '.$state : '-'),
+                    ->formatStateUsing(fn ($state) => PhoneNumber::display(is_string($state) ? $state : null)),
 
                 TextColumn::make('status')
                     ->label('Status')
@@ -547,12 +548,12 @@ class VendorsTable
 
                                     $content .= '<div class="mb-4 p-3 bg-white border border-green-300 rounded-lg">';
                                     $content .= '<div class="flex justify-between items-start mb-2">';
-                                    $content .= '<h4 class="font-medium text-green-900">'.$productName.'</h4>';
+                                    $content .= '<h4 class="font-medium text-green-900">'.e((string) $productName).'</h4>';
                                     $content .= '<span class="text-sm text-green-600 bg-green-100 px-2 py-1 rounded">Total Qty: '.$totalQuantity.'</span>';
                                     $content .= '</div>';
 
                                     if ($product && $product->category) {
-                                        $content .= '<p class="text-sm text-green-700 mb-2"><strong>Category:</strong> '.$product->category->name.'</p>';
+                                        $content .= '<p class="text-sm text-green-700 mb-2"><strong>Category:</strong> '.e($product->category->name).'</p>';
                                     }
 
                                     $content .= '<div class="text-sm text-green-600">';

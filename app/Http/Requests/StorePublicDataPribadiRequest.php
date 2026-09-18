@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Support\PhoneNumber;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -23,7 +24,7 @@ class StorePublicDataPribadiRequest extends FormRequest
 
         if ($this->has('nomor_telepon')) {
             $this->merge([
-                'nomor_telepon' => preg_replace('/\D+/', '', (string) $this->input('nomor_telepon')),
+                'nomor_telepon' => PhoneNumber::e164((string) $this->input('nomor_telepon')),
             ]);
         }
 

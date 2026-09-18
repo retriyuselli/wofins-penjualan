@@ -23,6 +23,7 @@ class ContractTemplateForm
     public static function configure(Schema $schema): Schema
     {
         $placeholderHelp = implode(', ', ContractTemplateDefaults::placeholderHelp());
+        $spkDefaults = ContractTemplateDefaults::spkTemplateAttributes();
 
         return $schema
             ->components([
@@ -34,7 +35,7 @@ class ContractTemplateForm
                                     ->label('Nama template')
                                     ->required()
                                     ->maxLength(255)
-                                    ->default('Kontrak Pernikahan'),
+                                    ->default($spkDefaults['name']),
 
                                 Select::make('company_id')
                                     ->label('Perusahaan')
@@ -42,7 +43,7 @@ class ContractTemplateForm
                                     ->searchable()
                                     ->preload()
                                     ->nullable()
-                                    ->helperText('Kosongkan untuk template global. Template aktif perusahaan dipakai lebih dulu daripada default sistem.'),
+                                    ->helperText('Kosongkan untuk template global. Template aktif perusahaan dipakai lebih dulu. Default sistem tetap memakai layout kontrak semula.'),
                             ]),
 
                         Grid::make(2)
@@ -67,22 +68,23 @@ class ContractTemplateForm
                             ->label('Judul kontrak')
                             ->required()
                             ->maxLength(255)
-                            ->default(ContractTemplateDefaults::templateAttributes()['title']),
+                            ->default($spkDefaults['title']),
                         TextInput::make('package_section_title')
                             ->label('Judul bagian paket')
                             ->required()
                             ->maxLength(255)
-                            ->default(ContractTemplateDefaults::templateAttributes()['package_section_title']),
+                            ->default($spkDefaults['package_section_title']),
                         TextInput::make('package_price_label')
                             ->label('Label harga paket')
                             ->required()
                             ->maxLength(255)
-                            ->default(ContractTemplateDefaults::templateAttributes()['package_price_label']),
+                            ->default($spkDefaults['package_price_label']),
                         TextInput::make('facilities_heading')
-                            ->label('Judul rincian fasilitas')
+                            ->label('Judul bagian fasilitas')
+                            ->helperText('Default: DENGAN RINCIAN FASILITAS SEBAGAI BERIKUT :. SPK: Pasal 5 — Hak Pihak Kedua / Fasilitas Jasa Pernikahan')
                             ->required()
                             ->maxLength(255)
-                            ->default(ContractTemplateDefaults::templateAttributes()['facilities_heading']),
+                            ->default($spkDefaults['facilities_heading']),
                     ]),
 
                 Section::make('Paragraf pembuka & penutup')
@@ -94,19 +96,19 @@ class ContractTemplateForm
                         Textarea::make('intro_pihak_pertama')
                             ->label('Intro pihak pertama')
                             ->rows(3)
-                            ->default(ContractTemplateDefaults::templateAttributes()['intro_pihak_pertama']),
+                            ->default($spkDefaults['intro_pihak_pertama']),
                         Textarea::make('intro_pihak_kedua')
                             ->label('Intro pihak kedua')
                             ->rows(2)
-                            ->default(ContractTemplateDefaults::templateAttributes()['intro_pihak_kedua']),
+                            ->default($spkDefaults['intro_pihak_kedua']),
                         RichEditor::make('intro_after_parties')
                             ->label('Paragraf setelah identitas pihak')
                             ->toolbarButtons(['bold', 'italic', 'bulletList', 'orderedList', 'undo', 'redo'])
-                            ->default(ContractTemplateDefaults::templateAttributes()['intro_after_parties']),
+                            ->default($spkDefaults['intro_after_parties']),
                         Textarea::make('closing_text')
                             ->label('Kalimat penutup')
                             ->rows(2)
-                            ->default(ContractTemplateDefaults::templateAttributes()['closing_text']),
+                            ->default($spkDefaults['closing_text']),
                     ]),
 
                 Section::make('Klausul')
@@ -117,14 +119,15 @@ class ContractTemplateForm
                             ->orderColumn('sort_order')
                             ->reorderable()
                             ->collapsible()
-                            ->itemLabel(fn (array $state): ?string => $state['title'] ?? 'Klausul baru')
+                            ->itemLabel(fn (array $state): ?string => trim(($state['title'] ?? 'Pasal').' '.($state['keterangan'] ?? '')) ?: 'Klausul baru')
                             ->addActionLabel('Tambah klausul')
-                            ->default(ContractTemplateDefaults::sections())
+                            ->default(ContractTemplateDefaults::spkSections())
                             ->schema([
                                 Grid::make(3)
                                     ->schema([
                                         TextInput::make('title')
-                                            ->label('Judul')
+                                            ->label('Pasal')
+                                            ->placeholder('Pasal 1')
                                             ->required()
                                             ->maxLength(255)
                                             ->live(onBlur: true)
@@ -134,8 +137,12 @@ class ContractTemplateForm
                                                 }
 
                                                 $set('key', Str::slug((string) $state, '_') ?: 'klausul_'.Str::lower(Str::random(6)));
-                                            })
-                                            ->columnSpan(2),
+                                            }),
+                                        TextInput::make('keterangan')
+                                            ->label('Keterangan pasal')
+                                            ->placeholder('Maksud Kerjasama')
+                                            ->maxLength(255)
+                                            ->columnSpan(1),
                                         Toggle::make('is_enabled')
                                             ->label('Tampil di PDF')
                                             ->default(true)

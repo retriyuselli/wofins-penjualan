@@ -33,24 +33,13 @@
         <!-- Download Buttons -->
         <div class="mt-6 flex flex-wrap justify-end gap-3">
             @php
-                $phone = $order->prospect->phone ?? '';
-                $whatsappUrl = '#';
-                if ($phone) {
-                    $phone = preg_replace('/[^0-9]/', '', $phone);
-                    // Jika dimulai dengan 0, ganti dengan 62
-                    if (substr($phone, 0, 1) === '0') {
-                        $phone = '62' . substr($phone, 1);
-                    }
-                    // Jika dimulai dengan 8, tambahkan 62 di depan
-                    elseif (substr($phone, 0, 1) === '8') {
-                        $phone = '62' . $phone;
-                    }
-                    $message = "Halo, berikut adalah invoice Anda: " . route('invoice.download', ['order' => $order]);
-                    $whatsappUrl = "https://wa.me/{$phone}?text=" . urlencode($message);
-                }
+                $whatsappUrl = \App\Support\PhoneNumber::waMe(
+                    $order->prospect->phone ?? null,
+                    'Halo, berikut adalah invoice Anda: '.route('invoice.download', ['order' => $order])
+                );
             @endphp
 
-            @if($phone)
+            @if($whatsappUrl)
                 <a href="{{ $whatsappUrl }}" target="_blank"
                     class="inline-flex items-center justify-center gap-2 px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-sm text-white hover:bg-green-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
                     <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">

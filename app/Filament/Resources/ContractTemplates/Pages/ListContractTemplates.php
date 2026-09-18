@@ -28,12 +28,33 @@ class ListContractTemplates extends ListRecords
                     $copy = ContractTemplate::copyFrom($source, [
                         'company_id' => $company?->id,
                         'is_system_default' => false,
-                        'is_active' => true,
+                        'is_active' => false,
                         'name' => 'Kontrak '.($company?->company_name ?: 'Perusahaan'),
                     ]);
 
                     Notification::make()
                         ->title('Template disalin dari default')
+                        ->success()
+                        ->send();
+
+                    return redirect(ContractTemplateResource::getUrl('edit', ['record' => $copy]));
+                }),
+            Action::make('copySpk')
+                ->label('Salin dari SPK')
+                ->icon('heroicon-o-document-text')
+                ->color('gray')
+                ->action(function () {
+                    $company = Company::query()->first();
+                    $copy = ContractTemplate::makeFromSpk([
+                        'company_id' => $company?->id,
+                        'is_system_default' => false,
+                        'is_active' => true,
+                        'name' => 'SPK '.($company?->company_name ?: 'Perusahaan'),
+                    ]);
+
+                    Notification::make()
+                        ->title('Template SPK dibuat')
+                        ->body('Layout mengikuti kontrak sekarang. Default/global tidak diubah.')
                         ->success()
                         ->send();
 

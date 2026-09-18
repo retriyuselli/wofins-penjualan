@@ -37,6 +37,15 @@ class AuthController extends Controller
         $remember = $request->boolean('remember');
 
         if (Auth::attempt($credentials, $remember)) {
+            $user = Auth::user();
+            if ($user instanceof User && $user->isAccessBlocked()) {
+                Auth::logout();
+
+                throw ValidationException::withMessages([
+                    'email' => ['Akun Anda tidak aktif. Hubungi administrator.'],
+                ]);
+            }
+
             $request->session()->regenerate();
 
             return redirect()->route('profile');
@@ -52,7 +61,9 @@ class AuthController extends Controller
      */
     public function showRegisterForm()
     {
-        return view('front.auth.register');
+        return redirect()
+            ->route('front.login')
+            ->with('error', 'Pendaftaran mandiri ditutup. Hubungi administrator untuk dibuatkan akun.');
     }
 
     /**
@@ -60,21 +71,7 @@ class AuthController extends Controller
      */
     public function register(Request $request)
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8|confirmed',
-        ]);
-
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => bcrypt($request->password),
-        ]);
-
-        Auth::login($user);
-
-        return redirect()->route('home')->with('success', 'Akun berhasil dibuat!');
+        abort(403, 'Pendaftaran mandiri ditutup.');
     }
 
     /**
@@ -151,14 +148,9 @@ class AuthController extends Controller
                 $user->forceFill($updates)->save();
             }
         } else {
-            $user = User::create([
-                'name' => $googleUser->getName() ?: Str::before($email, '@'),
-                'email' => $email,
-                'google_id' => $googleId,
-                'email_verified_at' => now(),
-                'password' => Str::password(32),
-                'status' => 'active',
-            ]);
+            return redirect()
+                ->route('front.login')
+                ->with('error', 'Akun Google belum terdaftar. Hubungi administrator.');
         }
 
         Auth::login($user, true);

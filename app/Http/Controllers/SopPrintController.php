@@ -15,6 +15,8 @@ class SopPrintController extends Controller
         $sop = Sop::with(['category', 'creator', 'updater', 'revisions.revisor'])
             ->findOrFail($id);
 
+        \Illuminate\Support\Facades\Gate::authorize('view', $sop);
+
         $isPrint = $request->has('print');
 
         return view('sop.print', compact('sop', 'isPrint'));
@@ -27,6 +29,8 @@ class SopPrintController extends Controller
     {
         $sop = Sop::with(['category', 'creator', 'updater'])
             ->findOrFail($id);
+
+        \Illuminate\Support\Facades\Gate::authorize('view', $sop);
 
         // TODO: Implement PDF generation using DomPDF or similar
         // For now, redirect to print view

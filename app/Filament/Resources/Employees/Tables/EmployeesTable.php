@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Employees\Tables;
 
 use App\Models\Employee;
+use App\Support\PhoneNumber;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -44,7 +45,7 @@ class EmployeesTable
 
                 TextColumn::make('phone')
                     ->label('Phone')
-                    ->prefix('+62')
+                    ->formatStateUsing(fn (?string $state) => PhoneNumber::display($state))
                     ->description(fn (Employee $record): string => $record->email ?? '')
                     ->searchable(),
 

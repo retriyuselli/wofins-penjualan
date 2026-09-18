@@ -11,6 +11,7 @@ class ContractTemplateSection extends Model
         'contract_template_id',
         'key',
         'title',
+        'keterangan',
         'body',
         'sort_order',
         'is_enabled',

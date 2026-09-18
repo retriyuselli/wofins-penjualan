@@ -38,12 +38,19 @@ class EnsureAppLicense
         }
 
         if ($request->is('livewire/*')) {
-            $raw = (string) $request->getContent();
-
-            return str_contains($raw, 'ActivateLicense')
-                || str_contains($raw, 'activate-license');
+            return $this->isLicenseActivationLivewire($request);
         }
 
         return false;
+    }
+
+    private function isLicenseActivationLivewire(Request $request): bool
+    {
+        $raw = (string) $request->getContent();
+        if ($raw === '') {
+            return false;
+        }
+
+        return (bool) preg_match('/"name"\s*:\s*"[^"]*activate-license[^"]*"/i', $raw);
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Companies\Schemas;
 
 use App\Models\User;
+use App\Support\PhoneNumber;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
@@ -101,13 +102,9 @@ class CompanyForm
                                                     ->unique(ignoreRecord: true)
                                                     ->maxLength(255)
                                                     ->placeholder('contoh@perusahaan.com'),
-                                                TextInput::make('phone')
-                                                    ->tel()
-                                                    ->required()
-                                                    ->minLength(8)
-                                                    ->maxLength(20)
-                                                    ->regex('/^[0-9+\s\-]+$/')
-                                                    ->placeholder('+62 812 xxxx xxxx'),
+                                                PhoneNumber::applyInput(
+                                                    TextInput::make('phone')->required()
+                                                ),
                                             ]),
                                         Textarea::make('address')
                                             ->required()
@@ -152,7 +149,7 @@ class CompanyForm
                                                 FileUpload::make('favicon_url')
                                                     ->disk('public')
                                                     ->directory('company/favicon')
-                                                    ->acceptedFileTypes(['image/png', 'image/x-icon', 'image/svg+xml'])
+                                                    ->acceptedFileTypes(['image/png', 'image/x-icon', 'image/vnd.microsoft.icon'])
                                                     ->imagePreviewHeight('64')
                                                     ->maxSize(5120),
                                                 FileUpload::make('image_login')
@@ -218,8 +215,9 @@ class CompanyForm
                                             ->columns(2)
                                             ->schema([
                                                 FileUpload::make('legal_documents')
-                                                    ->disk('public')
+                                                    ->disk('private')
                                                     ->directory('company/legal')
+                                                    ->visibility('private')
                                                     ->acceptedFileTypes(['application/pdf'])
                                                     ->maxSize(5120)
                                                     ->helperText('Dokumen legal perusahaan (PDF)')

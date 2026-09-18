@@ -19,7 +19,15 @@ class OrderPolicy
 
     public function view(AuthUser $authUser, Order $order): bool
     {
-        return $authUser->can('View:Order');
+        if (! $authUser->can('View:Order')) {
+            return false;
+        }
+
+        if ($authUser instanceof \App\Models\User && $authUser->canViewAllOrders()) {
+            return true;
+        }
+
+        return (int) $order->user_id === (int) $authUser->id;
     }
 
     public function create(AuthUser $authUser): bool
@@ -29,7 +37,15 @@ class OrderPolicy
 
     public function update(AuthUser $authUser, Order $order): bool
     {
-        return $authUser->can('Update:Order');
+        if (! $authUser->can('Update:Order')) {
+            return false;
+        }
+
+        if ($authUser instanceof \App\Models\User && $authUser->canViewAllOrders()) {
+            return true;
+        }
+
+        return (int) $order->user_id === (int) $authUser->id;
     }
 
     public function delete(AuthUser $authUser, Order $order): bool

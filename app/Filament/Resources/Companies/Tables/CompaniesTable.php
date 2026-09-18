@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Companies\Tables;
 
 use App\Filament\Resources\Companies\CompanyResource;
+use App\Support\PhoneNumber;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
@@ -41,6 +42,7 @@ class CompaniesTable
                     ->toggleable(),
                 TextColumn::make('phone')
                     ->icon('heroicon-m-phone')
+                    ->formatStateUsing(fn (?string $state) => PhoneNumber::display($state))
                     ->copyable()
                     ->searchable()
                     ->toggleable(),
