@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Company;
 use App\Models\Order;
 use App\Models\PaymentMethod;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -10,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 
 class InvoiceOrderController extends Controller
@@ -70,19 +72,24 @@ class InvoiceOrderController extends Controller
     }
 
     /**
-     * Generate and download PDF invoice for the given order.
-     *
-     * @return Response
+     * Stream PDF invoice in the browser (inline), instead of forcing a download.
      */
     public function download(Order $order)
     {
         Gate::authorize('view', $order);
 
+        return $this->pdfResponse($order, false);
+    }
+
+    /**
+     * Generate the invoice PDF without repeating authorization.
+     */
+    public function pdfResponse(Order $order, bool $asDownload = true): Response
+    {
         @ini_set('max_execution_time', '300');
         @ini_set('memory_limit', '512M');
         @set_time_limit(300);
-        
-        // Get order details with eager loading for improved performance
+
         $order = Order::with([
             'items.product.category',
             'items.product.vendorItems.vendor',
@@ -96,8 +103,8 @@ class InvoiceOrderController extends Controller
         ])->findOrFail($order->id);
 
         $company = null;
-        if (\Illuminate\Support\Facades\Schema::hasTable('companies')) {
-            $company = \App\Models\Company::with('paymentMethod')->first();
+        if (Schema::hasTable('companies')) {
+            $company = Company::with('paymentMethod')->first();
         }
 
         $paymentDetails = 'Please contact us for payment details.';
@@ -160,8 +167,7 @@ class InvoiceOrderController extends Controller
             }
         }
 
-        // Configure PDF options to handle page breaks properly
-        $pdf = PDF::loadView('invoices.pdf', compact(
+        $pdf = Pdf::loadView('invoices.pdf', compact(
             'order',
             'company',
             'paymentDetails',
@@ -171,7 +177,6 @@ class InvoiceOrderController extends Controller
             'allProductPengurangans',
         ));
 
-        // Set PDF options for better rendering
         $pdf->setPaper('a4', 'portrait');
         $pdf->setOptions([
             'dpi' => 96,
@@ -186,8 +191,11 @@ class InvoiceOrderController extends Controller
             'margin_bottom' => 15,
         ]);
 
-        // return $pdf->stream("Invoice-{$order->prospect->name_event}.pdf");
-        return $pdf->download("Invoice-{$order->prospect->name_event}.pdf");
+        $filename = 'Invoice-'.($order->prospect->name_event ?? $order->number ?? 'proyek').'.pdf';
+
+        return $asDownload
+            ? $pdf->download($filename)
+            : $pdf->stream($filename);
     }
 
     /**
