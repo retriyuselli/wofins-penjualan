@@ -132,22 +132,41 @@
         <table style="width: 100%; margin-bottom: 1px; padding-bottom: 3px;" class="no-border">
             <tr class="no-border">
                 <td class="no-border p-0" style="line-height: 1; text-align: left;">
-                    <div style="font-size: 14px; font-weight: bold; text-transform: uppercase;">{{ strtoupper($companyName ?? config('app.name')) }}</div>
+                    @php
+                        $company = $company ?? (\Illuminate\Support\Facades\Schema::hasTable('companies')
+                            ? \App\Models\Company::query()->first()
+                            : null);
+                        $companyName = $company?->company_name ?: ($companyName ?? config('app.name'));
+                        $companyAddress = $company?->address ?: '';
+                        $companyPhone = $company?->phone ?: '';
+                        $companyEmail = $company?->email ?: '';
+                    @endphp
+                    <div style="font-size: 14px; font-weight: bold; text-transform: uppercase;">{{ strtoupper($companyName) }}</div>
                     <div style="font-size: 12px;">
-                        Alamat : Jln. Sintraman Jaya, No. 2148, Sekip Jaya, Palembang<br>
-                        No. Tlp : +62 822-9796-2600<br>
-                        Email : maknawedding@gmail.com
+                        @if ($companyAddress !== '')
+                            Alamat : {{ $companyAddress }}<br>
+                        @endif
+                        @if ($companyPhone !== '')
+                            No. Tlp : {{ $companyPhone }}<br>
+                        @endif
+                        @if ($companyEmail !== '')
+                            Email : {{ $companyEmail }}
+                        @endif
                     </div>
                 </td>
                 <td class="no-border p-0" style="width: 40%; text-align: right; vertical-align: middle;">
                     @php
-                        $logoPath = public_path(config('invoice.logo', 'images/logo.png'));
-                        if (file_exists($logoPath)) {
-                            $logoType = pathinfo($logoPath, PATHINFO_EXTENSION);
-                            $logoData = file_get_contents($logoPath);
-                            $logoBase64 = 'data:image/' . $logoType . ';base64,' . base64_encode($logoData);
-                        } else {
-                            $logoBase64 = '';
+                        $logoPath = null;
+                        if ($company?->logo_url && \Illuminate\Support\Facades\Storage::disk('public')->exists($company->logo_url)) {
+                            $logoPath = \Illuminate\Support\Facades\Storage::disk('public')->path($company->logo_url);
+                        } elseif (file_exists(public_path('images/logomki.png'))) {
+                            $logoPath = public_path('images/logomki.png');
+                        }
+
+                        $logoBase64 = '';
+                        if ($logoPath && file_exists($logoPath)) {
+                            $logoMime = mime_content_type($logoPath) ?: 'image/png';
+                            $logoBase64 = 'data:'.$logoMime.';base64,'.base64_encode((string) file_get_contents($logoPath));
                         }
                     @endphp
                     @if ($logoBase64)
