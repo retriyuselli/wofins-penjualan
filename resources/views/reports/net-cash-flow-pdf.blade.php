@@ -53,6 +53,7 @@
             text-align: center;
             font-size: 14px;
             font-weight: bold;
+            margin-top: 16px;
             margin-bottom: 20px;
             text-transform: uppercase;
         }
