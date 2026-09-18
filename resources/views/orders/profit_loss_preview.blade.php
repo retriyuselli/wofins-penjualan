@@ -221,15 +221,11 @@
                 <div class="space-y-2 text-sm">
                     <p><span class="font-medium text-gray-600">Tanggal Laporan:</span> {{ now()->format('d F Y') }}</p>
                     <p><span class="font-medium text-gray-600">Order Date:</span> {{ $order->created_at->format('d F Y') }}</p>
-                    <p><span class="font-medium text-gray-600">Tgl Lamaran:</span> 
-                        {{ $order->prospect->date_lamaran ? \Carbon\Carbon::parse($order->prospect->date_lamaran)->format('d F Y') : '-' }}
-                    </p>
-                    <p><span class="font-medium text-gray-600">Tgl Akad:</span> 
-                        {{ $order->prospect->date_akad ? \Carbon\Carbon::parse($order->prospect->date_akad)->format('d F Y') : '-' }}
-                    </p>
-                    <p><span class="font-medium text-gray-600">Tgl Resepsi:</span> 
-                        {{ $order->prospect->date_resepsi ? \Carbon\Carbon::parse($order->prospect->date_resepsi)->format('d F Y') : '-' }}
-                    </p>
+                    @foreach ($order->prospect?->filledPasal2Events() ?? [] as $event)
+                        <p class="min-w-0 break-words"><span class="font-medium text-gray-600">Tgl {{ $event['label'] }}:</span>
+                            {{ $event['date'] }}
+                        </p>
+                    @endforeach
                 </div>
             </div>
         </div>

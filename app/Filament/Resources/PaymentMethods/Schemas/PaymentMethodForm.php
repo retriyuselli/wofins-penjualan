@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\PaymentMethods\Schemas;
 
+use App\Support\BankAccount;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -28,9 +29,11 @@ class PaymentMethodForm
                         TextInput::make('cabang')
                             ->placeholder('cabang bank (opsional)')
                             ->maxLength(255),
-                        TextInput::make('no_rekening')
-                            ->required()
-                            ->numeric(),
+                        BankAccount::applyInput(
+                            TextInput::make('no_rekening')
+                                ->required()
+                                ->placeholder('0213987311')
+                        ),
                         Toggle::make('is_cash')
                             ->required(),
                     ])->columns(2),

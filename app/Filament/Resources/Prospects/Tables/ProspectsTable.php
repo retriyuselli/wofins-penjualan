@@ -91,7 +91,7 @@ class ProspectsTable
                     ->label('Nama Acara')
                     ->searchable()
                     ->sortable()
-                    ->description(fn (?Prospect $record): string => $record ? "Venue: {$record->venue}" : ''),
+                    ->description(fn (?Prospect $record): string => $record ? 'Lokasi resepsi: '.($record->venue ?: '-') : ''),
 
                 TextColumn::make('name_cpp')
                     ->label('Nama Pengantin Pria')
@@ -118,10 +118,16 @@ class ProspectsTable
                     ->formatStateUsing(fn (?string $state) => PhoneNumber::display($state)),
 
                 TextColumn::make('date_lamaran')
-                    ->label('Tanggal Lamaran')
+                    ->label('Lamaran')
                     ->date('d M Y')
                     ->sortable()
                     ->toggleable(),
+
+                TextColumn::make('date_pengajian')
+                    ->label('Pengajian')
+                    ->date('d M Y')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('date_akad')
                     ->label('Akad Nikah')
@@ -130,10 +136,16 @@ class ProspectsTable
                     ->toggleable(),
 
                 TextColumn::make('date_resepsi')
-                    ->label('Tanggal Resepsi')
+                    ->label('Resepsi')
                     ->date('d M Y')
                     ->sortable()
                     ->toggleable(),
+
+                TextColumn::make('date_ngunduh_mantu')
+                    ->label('Ngunduh Mantu')
+                    ->date('d M Y')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('total_penawaran')
                     ->label('Total Penawaran')

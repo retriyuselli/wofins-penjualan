@@ -196,21 +196,13 @@
                             @endif
                         </td>
                     </tr>
-                    <tr>
-                        <td class="align-top whitespace-nowrap pr-2">Tgl Lamaran</td>
-                        <td class="align-top px-2">:</td>
-                        <td class="align-top">{{ $order->prospect->date_lamaran ? \Carbon\Carbon::parse($order->prospect->date_lamaran)->format('d F Y') : '-' }}</td>
-                    </tr>
-                    <tr>
-                        <td class="align-top whitespace-nowrap pr-2">Tgl Akad</td>
-                        <td class="align-top px-2">:</td>
-                        <td class="align-top">{{ $order->prospect->date_akad ? \Carbon\Carbon::parse($order->prospect->date_akad)->format('d F Y') : '-' }}</td>
-                    </tr>
-                    <tr>
-                        <td class="align-top whitespace-nowrap pr-2">Tgl Resepsi</td>
-                        <td class="align-top px-2">:</td>
-                        <td class="align-top">{{ $order->prospect->date_resepsi ? \Carbon\Carbon::parse($order->prospect->date_resepsi)->format('d F Y') : '-' }}</td>
-                    </tr>
+                    @foreach ($order->prospect?->filledPasal2Events() ?? [] as $event)
+                        <tr>
+                            <td class="align-top whitespace-nowrap pr-2">Tgl {{ $event['label'] }}</td>
+                            <td class="align-top px-2">:</td>
+                            <td class="align-top min-w-0 break-words">{{ $event['date'] }}</td>
+                        </tr>
+                    @endforeach
                 </table>
             </div>
         </div>

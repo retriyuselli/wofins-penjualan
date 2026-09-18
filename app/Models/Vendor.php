@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\StatusVendor;
+use App\Support\BankAccount;
 use Exception;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -47,7 +48,13 @@ class Vendor extends Model
         'harga_vendor' => 'integer',
         'status' => StatusVendor::class,
         'is_master' => 'boolean',
+        'bank_account' => 'string',
     ];
+
+    public function setBankAccountAttribute(mixed $value): void
+    {
+        $this->attributes['bank_account'] = BankAccount::digits($value);
+    }
 
     protected static function booted(): void
     {

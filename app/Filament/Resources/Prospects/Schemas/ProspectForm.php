@@ -2,15 +2,18 @@
 
 namespace App\Filament\Resources\Prospects\Schemas;
 
+use App\Models\Prospect;
 use App\Support\PhoneNumber;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\TimePicker;
+use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\RawJs;
 use Illuminate\Support\Facades\Auth;
@@ -24,66 +27,27 @@ class ProspectForm
                 Group::make()
                     ->schema([
                         Section::make('Informasi Acara')
-                            ->description('Detail dasar acara dan tempat')
+                            ->description('Jadwal mengikuti Pasal 2. Pengajian dan ngunduh mantu diisi jika ada.')
                             ->schema([
                                 TextInput::make('name_event')
                                     ->label('Nama Acara')
                                     ->required()
                                     ->maxLength(255)
                                     ->placeholder('Pernikahan Pengantin Pria & Pengantin Wanita')
+                                    ->extraAttributes(['class' => 'min-w-0 max-w-full'])
                                     ->columnSpanFull(),
 
-                                Grid::make(3)
-                                    ->schema([
-                                        DatePicker::make('date_lamaran')
-                                            ->label('Tanggal Lamaran')
-                                            ->native(false)
-                                            ->displayFormat('d M Y'),
-
-                                        DatePicker::make('date_akad')
-                                            ->label('Tanggal Akad Nikah')
-                                            ->native(false)
-                                            ->displayFormat('d M Y'),
-
-                                        DatePicker::make('date_resepsi')
-                                            ->label('Tanggal Resepsi')
-                                            ->native(false)
-                                            ->displayFormat('d M Y'),
-                                    ]),
-
-                                Grid::make(3)
-                                    ->schema([
-                                        TimePicker::make('time_lamaran')
-                                            ->label('Jam Lamaran')
-                                            ->native(false)
-                                            ->seconds(false)
-                                            ->format('H:i:s'),
-
-                                        TimePicker::make('time_akad')
-                                            ->label('Jam Akad Nikah')
-                                            ->native(false)
-                                            ->seconds(false)
-                                            ->format('H:i:s'),
-
-                                        TimePicker::make('time_resepsi')
-                                            ->label('Jam Resepsi')
-                                            ->native(false)
-                                            ->seconds(false)
-                                            ->format('H:i:s'),
-                                    ]),
-
-                                TextInput::make('venue')
-                                    ->label('Lokasi Venue')
-                                    ->required()
-                                    ->maxLength(255)
-                                    ->placeholder('Masukkan detail venue')
-                                    ->columnSpanFull(),
+                                ...array_map(
+                                    fn (array $event): Fieldset => self::eventScheduleFieldset($event),
+                                    Prospect::pasal2EventDefinitions(),
+                                ),
                             ]),
 
                         Section::make('Informasi Klien')
                             ->description('Detail kontak untuk pasangan')
                             ->schema([
-                                Grid::make(2)
+                                Grid::make()
+                                    ->columns(['default' => 1, 'md' => 2])
                                     ->schema([
                                         TextInput::make('name_cpp')
                                             ->label('Nama Calon Pengantin Pria')
@@ -147,5 +111,42 @@ class ProspectForm
                     ->columnSpan(['lg' => 1]),
             ])
             ->columns(3);
+    }
+
+    /**
+     * @param  array{key: string, label: string, date: string, time: string, venue: string}  $event
+     */
+    private static function eventScheduleFieldset(array $event): Fieldset
+    {
+        $locationRequiredWhen = $event['key'] === 'resepsi' ? 'date_resepsi' : null;
+
+        return Fieldset::make($event['label'])
+            ->columns(1)
+            ->extraAttributes(['class' => 'min-w-0 max-w-full'])
+            ->schema([
+                Grid::make([
+                    'default' => 1,
+                    'md' => 3,
+                ])
+                    ->schema([
+                        DatePicker::make($event['date'])
+                            ->label('Tanggal')
+                            ->native(false)
+                            ->displayFormat('d M Y')
+                            ->extraAttributes(['class' => 'min-w-0 max-w-full']),
+                        TimePicker::make($event['time'])
+                            ->label('Jam')
+                            ->native(false)
+                            ->seconds(false)
+                            ->format('H:i:s')
+                            ->extraAttributes(['class' => 'min-w-0 max-w-full']),
+                        TextInput::make($event['venue'])
+                            ->label('Lokasi')
+                            ->maxLength(255)
+                            ->required(fn (Get $get): bool => $locationRequiredWhen !== null && filled($get($locationRequiredWhen)))
+                            ->placeholder('Nama tempat / alamat')
+                            ->extraAttributes(['class' => 'min-w-0 max-w-full']),
+                    ]),
+            ]);
     }
 }

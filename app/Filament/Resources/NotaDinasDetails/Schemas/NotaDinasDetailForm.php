@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\NotaDinasDetails\Schemas;
 
+use App\Support\BankAccount;
 use App\Support\PhoneNumber;
 use App\Enums\OrderStatus;
 use App\Enums\PengeluaranJenis;
@@ -592,12 +593,12 @@ class NotaDinasDetailForm
                                                             ->prefix('Bank ')
                                                             ->placeholder('BCA / Mandiri / BNI'),
 
-                                                        TextInput::make('bank_account')
-                                                            ->label('Nomor Rekening')
-                                                            ->required()
-                                                            ->numeric()
-                                                            ->maxLength(255)
-                                                            ->placeholder('1234567890'),
+                                                        BankAccount::applyInput(
+                                                            TextInput::make('bank_account')
+                                                                ->label('Nomor Rekening')
+                                                                ->required()
+                                                                ->placeholder('0213987311')
+                                                        ),
 
                                                         TextInput::make('account_holder')
                                                             ->label('Nama')

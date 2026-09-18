@@ -12,6 +12,7 @@ class ContractTemplateSeeder extends Seeder
         $service = app(ContractTemplateService::class);
         $preserved = $service->preserveSpkAsCompanyTemplate();
         $service->syncSystemDefault();
+        $service->refreshSpkScheduleText();
 
         $this->command?->info('✅ ContractTemplateSeeder: template default/global dikembalikan ke layout semula.');
         if ($preserved) {

@@ -508,12 +508,13 @@ Invoice Area
                                             </div>
                                             <div class="col-auto">
                                                 <div style="line-height: 1.2;">
-                                                    <p style="margin-bottom: 2px;"><b>Date Akad : </b>
-                                                        {{ $simulasi->prospect->date_akad ? $simulasi->prospect->date_akad->format('d F Y') : 'N/A' }}
-                                                    </p>
-                                                    <p style="margin-bottom: 2px;"><b>Date Resepsi : </b>
-                                                        {{ $simulasi->prospect->date_resepsi ? $simulasi->prospect->date_resepsi->format('d F Y') : 'N/A' }}
-                                                    </p>
+                                                    @forelse ($simulasi->prospect?->filledPasal2Events() ?? [] as $event)
+                                                        <p style="margin-bottom: 2px;"><b>{{ $event['label'] }} : </b>
+                                                            {{ $event['date'] }}
+                                                        </p>
+                                                    @empty
+                                                        <p style="margin-bottom: 2px;"><b>Jadwal Pasal 2 : </b>N/A</p>
+                                                    @endforelse
                                                     <p style="margin-bottom: 2px;"><b>Valid Until : </b>
                                                         {{ $simulasi->created_at->addDays(4)->format('d F Y') }}
                                                     </p>

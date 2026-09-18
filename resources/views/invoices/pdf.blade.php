@@ -548,27 +548,13 @@
                             {{ $order->due_date ? \Carbon\Carbon::parse($order->due_date)->format('d F Y') : now()->addDays(config('invoice.payment_days', 7))->format('d F Y') }}
                         </td>
                     </tr>
-                    <tr>
-                        <td style="vertical-align: top; padding: 2px 0;">Tgl Lamaran</td>
-                        <td style="vertical-align: top; padding: 2px 0;">:</td>
-                        <td style="vertical-align: top; padding: 2px 0;">
-                            {{ $order->prospect->date_lamaran ? \Carbon\Carbon::parse($order->prospect->date_lamaran)->format('d F Y') : '-' }}
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="vertical-align: top; padding: 2px 0;">Tgl Akad</td>
-                        <td style="vertical-align: top; padding: 2px 0;">:</td>
-                        <td style="vertical-align: top; padding: 2px 0;">
-                            {{ $order->prospect->date_akad ? \Carbon\Carbon::parse($order->prospect->date_akad)->format('d F Y') : '-' }}
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="vertical-align: top; padding: 2px 0;">Tgl Resepsi</td>
-                        <td style="vertical-align: top; padding: 2px 0;">:</td>
-                        <td style="vertical-align: top; padding: 2px 0;">
-                            {{ $order->prospect->date_resepsi ? \Carbon\Carbon::parse($order->prospect->date_resepsi)->format('d F Y') : '-' }}
-                        </td>
-                    </tr>
+                    @foreach ($order->prospect?->filledPasal2Events() ?? [] as $event)
+                        <tr>
+                            <td style="vertical-align: top; padding: 2px 0;">Tgl {{ $event['label'] }}</td>
+                            <td style="vertical-align: top; padding: 2px 0;">:</td>
+                            <td style="vertical-align: top; padding: 2px 0;">{{ $event['date'] }}</td>
+                        </tr>
+                    @endforeach
                 </table>
             </td>
         </tr>

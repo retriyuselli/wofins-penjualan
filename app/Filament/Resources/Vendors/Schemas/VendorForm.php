@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Vendors\Schemas;
 use App\Models\Category;
 use App\Models\User;
 use App\Models\Vendor;
+use App\Support\BankAccount;
 use App\Support\PhoneNumber;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
@@ -189,9 +190,10 @@ class VendorForm
                                             ->label('Bank Name')
                                             ->prefix('Bank '),
 
-                                        TextInput::make('bank_account')
-                                            ->label('Account Number')
-                                            ->numeric(),
+                                        BankAccount::applyInput(
+                                            TextInput::make('bank_account')
+                                                ->label('Account Number')
+                                        ),
 
                                         TextInput::make('account_holder')
                                             ->label('Account Holder Name'),

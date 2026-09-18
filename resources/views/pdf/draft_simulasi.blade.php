@@ -289,8 +289,11 @@
                 <p><b>Base Product :</b> {{ \Illuminate\Support\Str::title($simulasi->product->name ?? 'N/A') }}</p>
             </td>
             <td style="width: 45%;">
-                <p><b>Date Akad :</b> {{ $simulasi->prospect->date_akad ? $simulasi->prospect->date_akad->format('d F Y') : 'N/A' }}</p>
-                <p><b>Date Resepsi :</b> {{ $simulasi->prospect->date_resepsi ? $simulasi->prospect->date_resepsi->format('d F Y') : 'N/A' }}</p>
+                @forelse ($simulasi->prospect?->filledPasal2Events() ?? [] as $event)
+                    <p><b>{{ $event['label'] }} :</b> {{ $event['date'] }}</p>
+                @empty
+                    <p><b>Jadwal Pasal 2 :</b> N/A</p>
+                @endforelse
                 <p><b>Valid Until :</b> {{ $simulasi->created_at ? $simulasi->created_at->addDays(4)->format('d F Y') : 'N/A' }}</p>
                 <p><b>Penawaran :</b> 00{{ $simulasi->id }}</p>
             </td>

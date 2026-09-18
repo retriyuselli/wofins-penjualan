@@ -557,15 +557,9 @@
                 <address>
                     Tanggal Laporan : {{ $generatedDate ?? now()->format('d F Y H:i') }}<br>
                     Status Pembayaran : @if ($order->is_paid) <span style="color: #28a745; font-weight: bold;">Lunas</span> @else <span style="color: #dc3545; font-weight: bold;">Belum Lunas</span> @endif<br>
-                    @if (filled($order->prospect->date_lamaran))
-                        Tgl Lamaran : {{ \Carbon\Carbon::parse($order->prospect->date_lamaran)->format('d F Y') }}<br>
-                    @endif
-                    @if (filled($order->prospect->date_akad))
-                        Tgl Akad : {{ \Carbon\Carbon::parse($order->prospect->date_akad)->format('d F Y') }}<br>
-                    @endif
-                    @if (filled($order->prospect->date_resepsi))
-                        Tgl Resepsi : {{ \Carbon\Carbon::parse($order->prospect->date_resepsi)->format('d F Y') }}<br>
-                    @endif
+                    @foreach ($order->prospect?->filledPasal2Events() ?? [] as $event)
+                        Tgl {{ $event['label'] }} : {{ $event['date'] }}<br>
+                    @endforeach
                 </address>
             </td>
         </tr>

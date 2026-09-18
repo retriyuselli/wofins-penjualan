@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\BankAccount;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
@@ -24,7 +25,13 @@ class PaymentMethod extends Model
     protected $casts = [
         'opening_balance' => 'integer',
         'opening_balance_date' => 'date',
+        'no_rekening' => 'string',
     ];
+
+    public function setNoRekeningAttribute(mixed $value): void
+    {
+        $this->attributes['no_rekening'] = BankAccount::digits($value);
+    }
 
 
     public function getActivitylogOptions(): LogOptions

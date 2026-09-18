@@ -105,23 +105,13 @@
         <form action="{{ route('prospect.store') }}" method="POST">
             @csrf
 
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label for="name_event" class="form-label">Nama Event <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control @error('name_event') is-invalid @enderror" id="name_event"
-                        name="name_event" value="{{ old('name_event') }}" required>
-                    @error('name_event')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
-                </div>
-                <div class="col-md-6 mb-3">
-                    <label for="venue" class="form-label">Lokasi Venue <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control @error('venue') is-invalid @enderror" id="venue"
-                        name="venue" value="{{ old('venue') }}" required>
-                    @error('venue')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
-                </div>
+            <div class="mb-3">
+                <label for="name_event" class="form-label">Nama Event <span class="text-danger">*</span></label>
+                <input type="text" class="form-control @error('name_event') is-invalid @enderror" id="name_event"
+                    name="name_event" value="{{ old('name_event') }}" required>
+                @error('name_event')
+                    <div class="invalid-feedback">{{ $message }}</div>
+                @enderror
             </div>
 
             <div class="row">
@@ -145,53 +135,47 @@
                 </div>
             </div>
 
-            <div class="row">
-                <div class="col-md-4 mb-3">
-                    <label for="date_lamaran" class="form-label">Tanggal Lamaran</label>
-                    <div class="input-group">
-                        <input type="date" class="form-control @error('date_lamaran') is-invalid @enderror"
-                            id="date_lamaran" name="date_lamaran" value="{{ old('date_lamaran') }}">
-                        <input type="time" class="form-control @error('time_lamaran') is-invalid @enderror"
-                            id="time_lamaran" name="time_lamaran" value="{{ old('time_lamaran') }}">
+            <p class="fw-semibold mb-2">Jadwal acara (Pasal 2)</p>
+            <p class="text-muted small mb-3">Isi tanggal hanya untuk acara yang ada. Pengajian dan ngunduh mantu opsional.</p>
+            @foreach (\App\Models\Prospect::pasal2EventDefinitions() as $event)
+                <div class="mb-3 pb-3 border-bottom">
+                    <div class="fw-semibold mb-2">{{ $event['label'] }}</div>
+                    <div class="row g-2">
+                        <div class="col-12 col-md-4">
+                            <label for="{{ $event['date'] }}" class="form-label">Tanggal</label>
+                            <input type="date" class="form-control @error($event['date']) is-invalid @enderror"
+                                id="{{ $event['date'] }}" name="{{ $event['date'] }}"
+                                value="{{ old($event['date']) }}">
+                            @error($event['date'])
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label for="{{ $event['time'] }}" class="form-label">Jam</label>
+                            <input type="time" class="form-control @error($event['time']) is-invalid @enderror"
+                                id="{{ $event['time'] }}" name="{{ $event['time'] }}"
+                                value="{{ old($event['time']) }}">
+                            @error($event['time'])
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label for="{{ $event['venue'] }}" class="form-label">
+                                Lokasi
+                                @if ($event['key'] === 'resepsi')
+                                    <span class="text-muted small">(wajib jika ada tanggal resepsi)</span>
+                                @endif
+                            </label>
+                            <input type="text" class="form-control @error($event['venue']) is-invalid @enderror"
+                                id="{{ $event['venue'] }}" name="{{ $event['venue'] }}"
+                                value="{{ old($event['venue']) }}" placeholder="Nama tempat / alamat">
+                            @error($event['venue'])
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
                     </div>
-                    @error('date_lamaran')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
-                    @error('time_lamaran')
-                        <div class="invalid-feedback d-block">{{ $message }}</div>
-                    @enderror
                 </div>
-                <div class="col-md-4 mb-3">
-                    <label for="date_akad" class="form-label">Tanggal Akad Nikah</label>
-                    <div class="input-group">
-                        <input type="date" class="form-control @error('date_akad') is-invalid @enderror" id="date_akad"
-                            name="date_akad" value="{{ old('date_akad') }}">
-                        <input type="time" class="form-control @error('time_akad') is-invalid @enderror"
-                            id="time_akad" name="time_akad" value="{{ old('time_akad') }}">
-                    </div>
-                    @error('date_akad')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
-                    @error('time_akad')
-                        <div class="invalid-feedback d-block">{{ $message }}</div>
-                    @enderror
-                </div>
-                <div class="col-md-4 mb-3">
-                    <label for="date_resepsi" class="form-label">Tanggal Resepsi</label>
-                    <div class="input-group">
-                        <input type="date" class="form-control @error('date_resepsi') is-invalid @enderror"
-                            id="date_resepsi" name="date_resepsi" value="{{ old('date_resepsi') }}">
-                        <input type="time" class="form-control @error('time_resepsi') is-invalid @enderror"
-                            id="time_resepsi" name="time_resepsi" value="{{ old('time_resepsi') }}">
-                    </div>
-                    @error('date_resepsi')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
-                    @error('time_resepsi')
-                        <div class="invalid-feedback d-block">{{ $message }}</div>
-                    @enderror
-                </div>
-            </div>
+            @endforeach
 
             <div class="row">
                 <div class="col-md-6 mb-3">

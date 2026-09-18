@@ -500,14 +500,59 @@
             margin-left: 20px;
         }
 
-        body.contract-spk .party-kedua-table {
-            margin-left: 0;
-            margin-right: 0;
-            width: 100%;
+        body.contract-spk table.party-identity-table {
+            width: auto;
+            max-width: 100%;
+            table-layout: auto;
         }
 
-        body.contract-spk .party-kedua-table .label {
-            width: 150px;
+        body.contract-spk table.party-identity-table td.num {
+            width: 16px;
+            min-width: 16px;
+            max-width: 16px;
+            white-space: nowrap;
+            vertical-align: top;
+            padding-right: 4px;
+        }
+
+        body.contract-spk table.party-identity-table td.label {
+            width: 100px;
+            min-width: 100px;
+            max-width: 100px;
+            white-space: nowrap;
+            text-align: left;
+            padding-right: 4px;
+        }
+
+        body.contract-spk table.party-identity-table td.separator {
+            width: 10px;
+            min-width: 10px;
+            max-width: 10px;
+            text-align: left;
+            padding-left: 0;
+            padding-right: 6px;
+        }
+
+        body.contract-spk .intro-after-parties {
+            margin-bottom: 12px;
+        }
+
+        body.contract-spk .intro-after-parties p {
+            margin: 0 0 6px 0;
+            text-align: justify;
+        }
+
+        body.contract-spk .intro-after-parties ol {
+            margin: 0 0 6px 0;
+            padding-left: 18px;
+            list-style-position: outside;
+        }
+
+        body.contract-spk .intro-after-parties ol > li {
+            margin: 0 0 1px 0;
+            padding: 0;
+            line-height: 1.2;
+            text-align: left;
         }
 
         .page-break {

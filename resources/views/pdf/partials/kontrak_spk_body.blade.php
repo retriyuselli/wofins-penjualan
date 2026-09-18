@@ -9,18 +9,21 @@
         Perjanjian ini dibuat pada {{ $contract['contract_date'] ?? ($record->created_at?->copy()->setTimezone('Asia/Jakarta')->locale('id')->translatedFormat('l, d F Y') ?? now('Asia/Jakarta')->locale('id')->translatedFormat('l, d F Y')) }} oleh dan antara :
     </p>
 
-    <table class="content-table">
+    <table class="content-table party-identity-table">
         <tr>
+            <td class="num"></td>
             <td class="label">Nama</td>
             <td class="separator">:</td>
             <td>{{ $companyOwnerName }}</td>
         </tr>
         <tr>
+            <td class="num"></td>
             <td class="label">Alamat Kantor</td>
             <td class="separator">:</td>
             <td>{{ $companyAddress }}</td>
         </tr>
         <tr>
+            <td class="num"></td>
             <td class="label">Status</td>
             <td class="separator">:</td>
             <td>{{ $companyOwnerPosition }}</td>
@@ -30,34 +33,40 @@
         {!! $contract['intro_pihak_pertama'] ?? 'Bertindak untuk dan atas nama '.$companyName.' beralamat di '.$companyAddress.', selanjutnya disebut PIHAK PERTAMA.' !!}
     </div>
 
-    <table class="content-table party-kedua-table">
+    <table class="content-table party-identity-table">
         <tr>
-            <td class="label">1. Nama</td>
+            <td class="num">1.</td>
+            <td class="label">Nama</td>
             <td class="separator">:</td>
             <td>{{ $prospect->name_cpw ?? ($record->name_ttd ?? '-') }}</td>
         </tr>
         <tr>
-            <td class="label" style="padding-left: 16px;">Alamat</td>
+            <td class="num"></td>
+            <td class="label">Alamat</td>
             <td class="separator">:</td>
             <td>{{ $prospect->address ?? '-' }}</td>
         </tr>
         <tr>
-            <td class="label" style="padding-left: 16px;">Status</td>
+            <td class="num"></td>
+            <td class="label">Status</td>
             <td class="separator">:</td>
             <td>Calon Pengantin Wanita</td>
         </tr>
         <tr>
-            <td class="label">2. Nama</td>
+            <td class="num">2.</td>
+            <td class="label">Nama</td>
             <td class="separator">:</td>
             <td>{{ $prospect->name_cpp ?? '-' }}</td>
         </tr>
         <tr>
-            <td class="label" style="padding-left: 16px;">Alamat</td>
+            <td class="num"></td>
+            <td class="label">Alamat</td>
             <td class="separator">:</td>
             <td>{{ $prospect->address ?? '-' }}</td>
         </tr>
         <tr>
-            <td class="label" style="padding-left: 16px;">Status</td>
+            <td class="num"></td>
+            <td class="label">Status</td>
             <td class="separator">:</td>
             <td>Calon Pengantin Pria</td>
         </tr>
@@ -66,7 +75,7 @@
         {!! $contract['intro_pihak_kedua'] ?? 'Bertindak untuk dan atas nama diri sendiri, selanjutnya disebut PIHAK KEDUA.' !!}
     </div>
 
-    <div class="text-justify" style="margin-bottom: 15px;">
+    <div class="intro-after-parties">
         {!! $contract['intro_after_parties'] ?? '' !!}
     </div>
 

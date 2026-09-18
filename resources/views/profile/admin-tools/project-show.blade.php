@@ -39,10 +39,13 @@
                 <div class="text-xs text-gray-500 mt-1">{{ $order->user?->name ?? '' }}</div>
             </div>
             <div>
-                <div class="text-xs text-gray-500">Tanggal Akad</div>
-                <div class="font-semibold text-gray-900">{{ $order->prospect?->date_akad ? $order->prospect->date_akad->format('d M Y') : '-' }}</div>
-                <div class="text-xs text-gray-500 mt-2">Tanggal Resepsi</div>
-                <div class="font-semibold text-gray-900">{{ $order->prospect?->date_resepsi ? $order->prospect->date_resepsi->format('d M Y') : '-' }}</div>
+                @forelse ($order->prospect?->filledPasal2Events('d M Y') ?? [] as $event)
+                    <div class="text-xs text-gray-500 {{ $loop->first ? '' : 'mt-2' }}">{{ $event['label'] }}</div>
+                    <div class="font-semibold text-gray-900 min-w-0 break-words">{{ $event['date'] }}</div>
+                @empty
+                    <div class="text-xs text-gray-500">Jadwal Pasal 2</div>
+                    <div class="font-semibold text-gray-900">-</div>
+                @endforelse
             </div>
             <div>
                 <div class="text-xs text-gray-500">Tanggal Closing</div>
