@@ -29,6 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'no-store' => \App\Http\Middleware\NoStoreResponse::class,
             'super-admin' => \App\Http\Middleware\EnsureSuperAdmin::class,
             'app.license' => \App\Http\Middleware\EnsureAppLicense::class,
+            'subscription.agreement' => \App\Http\Middleware\EnsureSubscriptionAgreementAccepted::class,
             'public-form' => \App\Http\Middleware\PublicFormSecurityHeaders::class,
         ]);
 

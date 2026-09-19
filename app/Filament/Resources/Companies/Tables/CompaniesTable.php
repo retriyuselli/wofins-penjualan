@@ -112,6 +112,11 @@ class CompaniesTable
                 ActionGroup::make([
                     ViewAction::make(),
                     EditAction::make(),
+                    Action::make('subscriptionAgreement')
+                        ->label('Kontrak')
+                        ->icon('heroicon-o-document-text')
+                        ->url(fn ($record): string => route('companies.subscription-agreement', $record))
+                        ->openUrlInNewTab(),
                 ]),
             ])
             ->toolbarActions([

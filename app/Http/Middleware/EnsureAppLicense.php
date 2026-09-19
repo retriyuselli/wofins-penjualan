@@ -33,6 +33,8 @@ class EnsureAppLicense
         if ($request->routeIs([
             'filament.admin.auth.*',
             'filament.admin.pages.license',
+            'subscription-agreement.gate',
+            'subscription-agreement.accept',
         ])) {
             return true;
         }

@@ -344,9 +344,9 @@ class ProductSeeder extends Seeder
             $hargaVendor = (int) $vendor->harga_vendor;
 
             ProductVendor::updateOrCreate(
-                [
-                    'product_id' => $product->id,
-                    'vendor_id' => $vendor->id,
+                        [
+                            'product_id' => $product->id,
+                            'vendor_id' => $vendor->id,
                     'simulasi_produk_id' => null,
                 ],
                 [
@@ -379,7 +379,7 @@ class ProductSeeder extends Seeder
 
         foreach ($pengurangans as $row) {
             ProductPengurangan::create([
-                'product_id' => $product->id,
+                        'product_id' => $product->id,
                 'description' => $row['description'],
                 'amount' => (int) $row['amount'],
                 'notes' => $row['notes'] ?? null,
