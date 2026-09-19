@@ -22,10 +22,18 @@ class EnsureSubscriptionAgreementAccepted
             'subscription-agreement.gate',
             'subscription-agreement.accept',
             'companies.subscription-agreement',
+            'filament.admin.pages.license',
             'logout',
             'filament.admin.auth.logout',
         ])) {
             return $next($request);
+        }
+
+        if ($request->is('livewire/*')) {
+            $raw = (string) $request->getContent();
+            if ($raw !== '' && preg_match('/"name"\s*:\s*"[^"]*activate-license[^"]*"/i', $raw)) {
+                return $next($request);
+            }
         }
 
         return redirect()->route('subscription-agreement.gate');

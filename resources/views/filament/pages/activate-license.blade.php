@@ -90,5 +90,31 @@
                 <a href="{{ config('wofins.license.contact_whatsapp') }}" target="_blank" class="text-primary-600 hover:underline">WhatsApp</a>.
             </p>
         </div>
+
+        <div class="min-w-0 rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-950/5 sm:p-6 dark:bg-gray-900 dark:ring-white/10 xl:col-span-3">
+            <h2 class="text-base font-semibold text-gray-950 dark:text-white">Perjanjian berlangganan</h2>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                Salinan kontrak antara WOFINS dan pemilik company. Buka PDF untuk dibaca, dicetak, atau disimpan.
+            </p>
+
+            @if ($this->company)
+                <div class="mt-4">
+                    <x-filament::button
+                        tag="a"
+                        href="{{ route('companies.subscription-agreement', $this->company) }}"
+                        target="_blank"
+                        rel="noopener"
+                        icon="heroicon-o-document-text"
+                        class="w-full sm:w-auto"
+                    >
+                        Buka PDF persetujuan
+                    </x-filament::button>
+                </div>
+            @else
+                <p class="mt-4 text-sm text-gray-500 dark:text-gray-400">
+                    Lengkapi data perusahaan di menu Administrasi → Perusahaan agar PDF bisa diisi nama pemilik.
+                </p>
+            @endif
+        </div>
     </div>
 </x-filament-panels::page>

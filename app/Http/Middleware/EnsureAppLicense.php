@@ -35,6 +35,7 @@ class EnsureAppLicense
             'filament.admin.pages.license',
             'subscription-agreement.gate',
             'subscription-agreement.accept',
+            'companies.subscription-agreement',
         ])) {
             return true;
         }

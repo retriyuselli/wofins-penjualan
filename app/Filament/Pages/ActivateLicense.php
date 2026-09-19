@@ -2,8 +2,10 @@
 
 namespace App\Filament\Pages;
 
+use App\Models\Company;
 use App\Services\AppLicenseService;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
@@ -40,6 +42,29 @@ class ActivateLicense extends Page
     public function getLicenseStatusProperty(): array
     {
         return app(AppLicenseService::class)->status(false);
+    }
+
+    public function getCompanyProperty(): ?Company
+    {
+        return Company::query()->first();
+    }
+
+    protected function getHeaderActions(): array
+    {
+        $company = $this->company;
+
+        if (! $company) {
+            return [];
+        }
+
+        return [
+            Action::make('agreementPdf')
+                ->label('PDF persetujuan')
+                ->icon(Heroicon::OutlinedDocumentText)
+                ->color('gray')
+                ->url(route('companies.subscription-agreement', $company))
+                ->openUrlInNewTab(),
+        ];
     }
 
     public static function canAccess(): bool
