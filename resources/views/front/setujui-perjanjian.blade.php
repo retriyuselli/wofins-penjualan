@@ -42,30 +42,91 @@
     }
 
     .wf-gate-scroll h2 {
-        font-size: 0.95rem;
+        font-size: 0.8rem;
         font-weight: 700;
         color: var(--wf-navy);
-        margin: 1rem 0 0.4rem;
+        margin: 0.85rem 0 0.3rem;
     }
 
     .wf-gate-scroll p,
     .wf-gate-scroll li {
-        font-size: 0.86rem;
-        line-height: 1.65;
+        font-size: 0.72rem;
+        line-height: 1.45;
         color: var(--wf-muted);
         overflow-wrap: anywhere;
     }
 
     .wf-gate-scroll ol,
     .wf-gate-scroll ul {
-        padding-left: 1.15rem;
-        margin: 0.35rem 0 0.7rem;
+        padding-left: 1.2rem;
+        margin: 0.3rem 0 0.55rem;
     }
+
+    .wf-gate-scroll ol {
+        list-style: decimal !important;
+    }
+
+    .wf-gate-scroll ul {
+        list-style: disc !important;
+    }
+
+    .wf-gate-scroll li {
+        display: list-item;
+        font-size: 0.72rem;
+        line-height: 1.45;
+        color: var(--wf-muted);
+        overflow-wrap: anywhere;
+    }
+
+    .wf-gate-scroll ol ol,
+    .wf-gate-scroll ol ul,
+    .wf-gate-scroll ul ul {
+        margin: 0.25rem 0 0.15rem;
+    }
+
+    .wf-gate-scroll .plan-wrap {
+        overflow-x: auto;
+        max-width: 100%;
+        margin: 0.4rem 0 0.7rem;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .wf-gate-scroll table.plan-table {
+        width: 100%;
+        min-width: 0;
+        table-layout: fixed;
+        border-collapse: collapse;
+        font-size: 0.65rem;
+        line-height: 1.35;
+        margin: 0;
+    }
+
+    .wf-gate-scroll table.plan-table th,
+    .wf-gate-scroll table.plan-table td {
+        border: 1px solid var(--wf-line);
+        padding: 4px 5px;
+        vertical-align: top;
+        text-align: left;
+        overflow-wrap: break-word;
+        word-break: break-word;
+    }
+
+    .wf-gate-scroll table.plan-table th {
+        background: var(--wf-cream);
+        color: var(--wf-navy);
+        font-weight: 700;
+        width: auto;
+    }
+
+    .wf-gate-scroll table.plan-table .col-plan { width: 18%; }
+    .wf-gate-scroll table.plan-table .col-price { width: 20%; white-space: nowrap; }
+    .wf-gate-scroll table.plan-table .col-seat { width: 16%; }
+    .wf-gate-scroll table.plan-table td:nth-child(2) { white-space: nowrap; }
 
     .wf-gate-meta {
         width: 100%;
         border-collapse: collapse;
-        font-size: 0.82rem;
+        font-size: 0.7rem;
         margin-bottom: 0.75rem;
     }
 
@@ -126,7 +187,7 @@
     <div class="wf-gate-card" role="dialog" aria-modal="true" aria-labelledby="gate-title">
         <div class="wf-gate-head">
             <p class="mb-1 text-xs font-bold uppercase tracking-[0.18em] text-[var(--wf-gold)]">Wajib disetujui</p>
-            <h1 id="gate-title" class="text-xl font-bold leading-tight text-[var(--wf-navy)] sm:text-2xl">
+            <h1 id="gate-title" class="text-lg font-bold leading-tight text-[var(--wf-navy)] sm:text-xl">
                 Perjanjian Berlangganan WOFINS
             </h1>
             <p class="mt-2 text-sm text-[var(--wf-muted)]">

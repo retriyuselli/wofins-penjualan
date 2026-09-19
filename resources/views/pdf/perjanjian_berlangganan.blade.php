@@ -8,25 +8,35 @@
         body {
             color: #111;
             font-family: 'DejaVu Sans', sans-serif;
-            font-size: 10.5px;
-            line-height: 1.45;
+            font-size: 9px;
+            line-height: 1.4;
             margin: 0;
         }
-        h1 { font-size: 16px; margin: 0 0 4px 0; text-align: center; text-transform: uppercase; }
-        h2 { font-size: 11.5px; margin: 14px 0 6px 0; }
-        p { margin: 0 0 7px 0; text-align: justify; }
-        ol, ul { margin: 0 0 8px 16px; padding: 0; }
-        li { margin-bottom: 4px; text-align: justify; }
-        table { width: 100%; border-collapse: collapse; margin: 8px 0 10px 0; }
-        th, td { border: 1px solid #ccc; padding: 5px 7px; vertical-align: top; text-align: left; }
+        h1 { font-size: 14px; margin: 0 0 4px 0; text-align: center; text-transform: uppercase; }
+        h2 { font-size: 10px; margin: 11px 0 5px 0; }
+        p { margin: 0 0 6px 0; text-align: justify; }
+        ol, ul { margin: 0 0 7px 18px; padding: 0 0 0 4px; }
+        ol { list-style-type: decimal; }
+        ul { list-style-type: disc; }
+        li { margin-bottom: 3px; text-align: justify; }
+        table { width: 100%; border-collapse: collapse; margin: 6px 0 8px 0; }
+        th, td { border: 1px solid #ccc; padding: 4px 5px; vertical-align: top; text-align: left; }
         th { background: #f3f1ea; width: 34%; font-weight: bold; }
-        .muted { color: #444; font-size: 10px; text-align: center; margin-bottom: 14px; }
-        .intro { margin-top: 10px; }
-        .sign { width: 100%; border: none; margin-top: 28px; }
+        .muted { color: #444; font-size: 8.5px; text-align: center; margin-bottom: 12px; }
+        .intro { margin-top: 8px; }
+        .sign { width: 100%; border: none; margin-top: 24px; }
         .sign td { border: none; width: 50%; padding: 8px 12px 0 0; }
-        .sign-line { border-bottom: 1px solid #333; height: 52px; margin: 8px 16px 6px 0; }
-        .stamp { font-size: 9px; color: #555; }
+        .sign-line { border-bottom: 1px solid #333; height: 48px; margin: 8px 16px 6px 0; }
+        .stamp { font-size: 8px; color: #555; }
         .article table th { width: auto; }
+        .plan-wrap { margin: 4px 0 8px 0; }
+        table.plan-table { table-layout: fixed; font-size: 7.5px; line-height: 1.3; margin: 0; }
+        table.plan-table th,
+        table.plan-table td { padding: 3px 4px; }
+        table.plan-table .col-plan { width: 16%; }
+        table.plan-table .col-price { width: 16%; white-space: nowrap; }
+        table.plan-table .col-seat { width: 14%; }
+        table.plan-table .col-scope { width: 54%; }
         .nowrap { white-space: nowrap; }
     </style>
 </head>
@@ -109,10 +119,11 @@
     @endforeach
 
     <h2>Pasal 17 — Kontak resmi</h2>
-    <p>
-        Email: {{ $provider['support_email'] }} · {{ $provider['email'] }} ·
-        WhatsApp: {{ $provider['whatsapp'] }} · Situs: {{ $provider['website'] }}
-    </p>
+    <ul>
+        <li>Email: {{ $provider['support_email'] }} · {{ $provider['email'] }}</li>
+        <li>WhatsApp: {{ $provider['whatsapp'] }}</li>
+        <li>Situs: {{ $provider['website'] }}</li>
+    </ul>
 
     <p>
         Demikian Perjanjian ini dibuat dalam rangkap yang sama kekuatannya, ditandatangani
