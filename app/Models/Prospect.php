@@ -64,14 +64,14 @@ class Prospect extends Model
         return [
             ['key' => 'lamaran', 'label' => 'Lamaran', 'date' => 'date_lamaran', 'time' => 'time_lamaran', 'venue' => 'venue_lamaran'],
             ['key' => 'pengajian', 'label' => 'Pengajian', 'date' => 'date_pengajian', 'time' => 'time_pengajian', 'venue' => 'venue_pengajian'],
-            ['key' => 'akad', 'label' => 'Akad Nikah', 'date' => 'date_akad', 'time' => 'time_akad', 'venue' => 'venue_akad'],
+            ['key' => 'akad', 'label' => 'Akad / Pemberkatan', 'date' => 'date_akad', 'time' => 'time_akad', 'venue' => 'venue_akad'],
             ['key' => 'resepsi', 'label' => 'Resepsi', 'date' => 'date_resepsi', 'time' => 'time_resepsi', 'venue' => 'venue'],
             ['key' => 'ngunduh_mantu', 'label' => 'Ngunduh Mantu', 'date' => 'date_ngunduh_mantu', 'time' => 'time_ngunduh_mantu', 'venue' => 'venue_ngunduh_mantu'],
         ];
     }
 
     /**
-     * @return list<array{key: string, label: string, date: string, location: ?string}>
+     * @return list<array{key: string, label: string, date: string, time: ?string, location: ?string, detail: string}>
      */
     public function filledPasal2Events(string $dateFormat = 'd F Y'): array
     {
@@ -95,16 +95,62 @@ class Prospect extends Model
             }
 
             $location = $this->{$event['venue']};
+            $timeLabel = $this->formatPasal2Clock($this->{$event['time']});
+            $dateLabel = $parsed->copy()->locale('id')->translatedFormat($dateFormat);
+            $parts = array_values(array_filter([
+                $dateLabel,
+                $timeLabel,
+                filled($location) ? (string) $location : null,
+            ]));
 
             $events[] = [
                 'key' => $event['key'],
-                'label' => $event['label'],
-                'date' => $parsed->copy()->locale('id')->translatedFormat($dateFormat),
+                'label' => $this->pasal2EventLabel($event),
+                'date' => $dateLabel,
+                'time' => $timeLabel,
                 'location' => filled($location) ? (string) $location : null,
+                'detail' => implode(' · ', $parts),
             ];
         }
 
         return $events;
+    }
+
+    /**
+     * @param  array{key: string, label: string}  $event
+     */
+    private function pasal2EventLabel(array $event): string
+    {
+        if ($event['key'] !== 'akad') {
+            return $event['label'];
+        }
+
+        $name = mb_strtolower((string) $this->name_event);
+
+        if (str_contains($name, 'pemberkatan') && ! str_contains($name, 'akad')) {
+            return 'Pemberkatan';
+        }
+
+        return $event['label'];
+    }
+
+    private function formatPasal2Clock(mixed $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        try {
+            $parsed = $value instanceof Carbon ? $value : Carbon::parse($value);
+
+            if ($parsed->format('H:i') === '00:00') {
+                return null;
+            }
+
+            return 'pukul '.$parsed->format('H.i');
+        } catch (Exception) {
+            return null;
+        }
     }
 
     protected static function boot()

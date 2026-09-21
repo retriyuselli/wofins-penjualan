@@ -298,13 +298,19 @@
         {{-- Simulation Information --}}
         <table class="w-full mt-4 border-collapse text-sm">
             <tr>
-                <td class="border border-gray-300 p-3 w-1/2 align-top text-[13px]">
+                <td class="border border-gray-300 p-3 w-full md:w-1/2 align-top text-[13px] min-w-0 break-words">
                     <strong>Wedding Package Product</strong><br>
                     Product Name : {{ $product->name ?? 'N/A' }}<br>
+                    @if ($product->parent)
+                        Parent Product : {{ $product->parent->name }}<br>
+                    @endif
                     Category : {{ $product->category->name ?? 'N/A' }}<br>
-                    Capacity : {{ $product->pax ?? 'N/A' }} Pax
+                    Resepsi : {{ $product->pax ?? 'N/A' }} Pax<br>
+                    @if (filled($product->pax_akad) && (int) $product->pax_akad > 0)
+                        Akad / Pemberkatan : {{ $product->pax_akad }} Pax
+                    @endif
                 </td>
-                <td class="border border-gray-300 p-3 w-1/2 align-top text-[13px]">
+                <td class="border border-gray-300 p-3 w-full md:w-1/2 align-top text-[13px] min-w-0 break-words">
                     <strong>Document Details</strong><br>
                     Reference : PROD-{{ str_pad($product->id ?? 0, 6, '0', STR_PAD_LEFT) }}<br>
                     Date : {{ now()->format('d F Y H:i:s') }}<br>

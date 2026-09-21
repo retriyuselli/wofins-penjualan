@@ -200,7 +200,7 @@
                         <tr>
                             <td class="align-top whitespace-nowrap pr-2">Tgl {{ $event['label'] }}</td>
                             <td class="align-top px-2">:</td>
-                            <td class="align-top min-w-0 break-words">{{ $event['date'] }}</td>
+                            <td class="align-top min-w-0 break-words">{{ $event['detail'] }}</td>
                         </tr>
                     @endforeach
                 </table>

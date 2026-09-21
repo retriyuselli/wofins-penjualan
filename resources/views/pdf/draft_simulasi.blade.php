@@ -285,12 +285,21 @@
         <tr>
             <td style="width: 55%;">
                 <p><b>Event Name :</b> {{ $simulasi->prospect->name_event ?? 'N/A' }}</p>
+                @if (filled($simulasi->prospect?->name_cpp) || filled($simulasi->prospect?->name_cpw))
+                    <p><b>Pengantin :</b> {{ trim(($simulasi->prospect->name_cpp ?? '').' & '.($simulasi->prospect->name_cpw ?? ''), ' &') }}</p>
+                @endif
                 <p><b>Created By :</b> {{ $simulasi->user->name ?? 'N/A' }}</p>
                 <p><b>Base Product :</b> {{ \Illuminate\Support\Str::title($simulasi->product->name ?? 'N/A') }}</p>
+                @if (filled($simulasi->product?->pax))
+                    <p><b>Pax Resepsi :</b> {{ $simulasi->product->pax }}</p>
+                @endif
+                @if (filled($simulasi->product?->pax_akad) && (int) $simulasi->product->pax_akad > 0)
+                    <p><b>Pax Akad / Pemberkatan :</b> {{ $simulasi->product->pax_akad }}</p>
+                @endif
             </td>
             <td style="width: 45%;">
                 @forelse ($simulasi->prospect?->filledPasal2Events() ?? [] as $event)
-                    <p><b>{{ $event['label'] }} :</b> {{ $event['date'] }}</p>
+                    <p><b>{{ $event['label'] }} :</b> {{ $event['detail'] }}</p>
                 @empty
                     <p><b>Jadwal Pasal 2 :</b> N/A</p>
                 @endforelse

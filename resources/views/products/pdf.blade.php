@@ -307,8 +307,14 @@
                 <td style="width: 50%;">
                     <strong>Wedding Package Product</strong><br>
                     Product Name : {{ $product->name }}<br>
+                    @if ($product->parent)
+                        Parent Product : {{ $product->parent->name }}<br>
+                    @endif
                     Category : {{ $product->category->name ?? 'N/A' }}<br>
-                    Capacity : {{ $product->pax }} Pax
+                    Resepsi : {{ $product->pax }} Pax<br>
+                    @if (filled($product->pax_akad) && (int) $product->pax_akad > 0)
+                        Akad / Pemberkatan : {{ $product->pax_akad }} Pax
+                    @endif
                 </td>
                 <td style="width: 50%;">
                     <strong>Document Details</strong><br>

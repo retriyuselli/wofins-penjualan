@@ -21,11 +21,12 @@ use InvalidArgumentException;
 use Spatie\Permission\Traits\HasRoles;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable implements FilamentUser, HasAvatar
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, HasRoles, Notifiable, LogsActivity;
+    use HasApiTokens, HasFactory, HasRoles, Notifiable, LogsActivity;
 
     /**
      * The attributes that are mass assignable.

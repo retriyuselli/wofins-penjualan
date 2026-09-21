@@ -20,6 +20,8 @@ class SimulasiDisplayController extends Controller
     {
         Gate::authorize('view', $record);
 
+        $record->loadMissing(['prospect', 'user', 'product']);
+
         $items = collect();
         if ($record->product) {
             // Eager load vendors for items to prevent N+1 queries in the view
@@ -48,6 +50,8 @@ class SimulasiDisplayController extends Controller
         @set_time_limit(180);
         @ini_set('max_execution_time', '180');
         @ini_set('memory_limit', '512M');
+
+        $record->loadMissing(['prospect', 'user', 'product']);
 
         // Ambil item-item dari produk dasar jika ada
         $items = collect();

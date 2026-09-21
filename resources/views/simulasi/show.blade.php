@@ -494,23 +494,37 @@ Invoice Area
                                 <tr>
                                     <td style="border: none; padding: 0;">
                                         <!-- Main Content Body -->
-                                        <div class="row justify-content-between mb-4">
-                                            <div class="col-auto">
+                                        <div class="row justify-content-between mb-4" style="row-gap: 8px;">
+                                            <div class="col-12 col-md-auto" style="min-width: 0; max-width: 100%;">
                                                 <div style="line-height: 1.2;">
                                                     <p style="margin-bottom: 2px;"><b>Event Name : </b>
                                                         {{ $simulasi->prospect->name_event ?? 'N/A' }}</p>
+                                                    @if (filled($simulasi->prospect?->name_cpp) || filled($simulasi->prospect?->name_cpw))
+                                                        <p style="margin-bottom: 2px;"><b>Pengantin : </b>
+                                                            {{ trim(($simulasi->prospect->name_cpp ?? '').' & '.($simulasi->prospect->name_cpw ?? ''), ' &') }}
+                                                        </p>
+                                                    @endif
                                                     <p style="margin-bottom: 2px;"><b>Created By : </b>
                                                         {{ $simulasi->user->name ?? 'N/A' }}</p>
                                                     <p style="margin-bottom: 2px;"><b>Base Product : </b>
                                                         {{ $simulasi->product->name ?? 'N/A' }}
                                                     </p>
+                                                    @if (filled($simulasi->product?->pax))
+                                                        <p style="margin-bottom: 2px;"><b>Pax Resepsi : </b>
+                                                            {{ $simulasi->product->pax }}</p>
+                                                    @endif
+                                                    @if (filled($simulasi->product?->pax_akad) && (int) $simulasi->product->pax_akad > 0)
+                                                        <p style="margin-bottom: 2px;"><b>Pax Akad / Pemberkatan : </b>
+                                                            {{ $simulasi->product->pax_akad }}</p>
+                                                    @endif
                                                 </div>
                                             </div>
-                                            <div class="col-auto">
+                                            <div class="col-12 col-md-auto" style="min-width: 0; max-width: 100%;">
                                                 <div style="line-height: 1.2;">
                                                     @forelse ($simulasi->prospect?->filledPasal2Events() ?? [] as $event)
-                                                        <p style="margin-bottom: 2px;"><b>{{ $event['label'] }} : </b>
-                                                            {{ $event['date'] }}
+                                                        <p style="margin-bottom: 2px; max-width: 100%; overflow-wrap: anywhere;">
+                                                            <b>{{ $event['label'] }} : </b>
+                                                            {{ $event['detail'] }}
                                                         </p>
                                                     @empty
                                                         <p style="margin-bottom: 2px;"><b>Jadwal Pasal 2 : </b>N/A</p>

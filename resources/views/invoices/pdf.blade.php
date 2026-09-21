@@ -575,7 +575,7 @@
                         <tr>
                             <td style="vertical-align: top; padding: 2px 0;">Tgl {{ $event['label'] }}</td>
                             <td style="vertical-align: top; padding: 2px 0;">:</td>
-                            <td style="vertical-align: top; padding: 2px 0;">{{ $event['date'] }}</td>
+                            <td style="vertical-align: top; padding: 2px 0;">{{ $event['detail'] }}</td>
                         </tr>
                     @endforeach
                 </table>
