@@ -76,6 +76,14 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::policy(BankReconciliationItem::class, BankReconciliationItemPolicy::class);
 
+        Gate::before(function ($user, string $ability) {
+            if ($user && method_exists($user, 'hasRole') && $user->hasRole('super_admin')) {
+                return true;
+            }
+
+            return null;
+        });
+
         // Register Document Observer for auto-numbering
         Document::observe(DocumentObserver::class);
 

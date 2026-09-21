@@ -36,6 +36,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'ability' => \Laravel\Sanctum\Http\Middleware\CheckForAnyAbility::class,
             'api.account.active' => \App\Http\Middleware\EnsureApiAccountActive::class,
             'api.app.license' => \App\Http\Middleware\EnsureApiAppLicense::class,
+            'pro.feature' => \App\Http\Middleware\EnsureProFeature::class,
         ]);
 
         // Ensure proper web middleware group for Niaga Hoster

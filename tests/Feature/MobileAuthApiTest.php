@@ -29,6 +29,7 @@ class MobileAuthApiTest extends TestCase
         $this->assertTrue(Route::has('api.v1.auth.login'));
         $this->assertTrue(Route::has('api.v1.auth.logout'));
         $this->assertTrue(Route::has('api.v1.me'));
+        $this->assertTrue(Route::has('api.v1.finance.dashboard'));
 
         $login = Route::getRoutes()->getByName('api.v1.auth.login');
         $this->assertNotNull($login);
@@ -116,17 +117,73 @@ class MobileAuthApiTest extends TestCase
         $this->assertSame(0, $user->tokens()->count());
     }
 
+    public function test_dashboard_returns_cash_summary_for_authorized_user(): void
+    {
+        $user = User::withoutEvents(fn () => User::query()->create([
+            'name' => 'Finance User',
+            'email' => 'finance@example.com',
+            'password' => Hash::make('secret123'),
+            'status' => 'active',
+        ]));
+
+        $roleId = Schema::hasTable('roles')
+            ? \Illuminate\Support\Facades\DB::table('roles')->insertGetId([
+                'name' => 'super_admin',
+                'guard_name' => 'web',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ])
+            : null;
+
+        if ($roleId) {
+            \Illuminate\Support\Facades\DB::table('model_has_roles')->insert([
+                'role_id' => $roleId,
+                'model_type' => User::class,
+                'model_id' => $user->id,
+            ]);
+        }
+
+        $token = $user->createToken('iphone-test', ['mobile'])->plainTextToken;
+
+        $this->withToken($token)
+            ->getJson('/api/v1/finance/dashboard')
+            ->assertOk()
+            ->assertJsonStructure([
+                'data' => [
+                    'period' => ['from', 'to'],
+                    'inflow' => ['wedding_payments', 'other_income', 'total'],
+                    'outflow' => ['wedding_expenses', 'operational', 'other_expenses', 'total'],
+                    'net_cash',
+                    'comparison' => [
+                        'period' => ['from', 'to'],
+                        'previous_inflow',
+                        'previous_outflow',
+                        'previous_net_cash',
+                    ],
+                ],
+            ]);
+    }
+
     private function createMinimalAuthSchema(): void
     {
-        Schema::dropIfExists('model_has_roles');
-        Schema::dropIfExists('model_has_permissions');
-        Schema::dropIfExists('role_has_permissions');
-        Schema::dropIfExists('roles');
-        Schema::dropIfExists('permissions');
-        Schema::dropIfExists('personal_access_tokens');
-        Schema::dropIfExists('companies');
-        Schema::dropIfExists('app_licenses');
-        Schema::dropIfExists('users');
+        foreach ([
+            'model_has_roles',
+            'model_has_permissions',
+            'role_has_permissions',
+            'roles',
+            'permissions',
+            'personal_access_tokens',
+            'companies',
+            'app_licenses',
+            'data_pembayarans',
+            'pendapatan_lains',
+            'expenses',
+            'expense_ops',
+            'pengeluaran_lains',
+            'users',
+        ] as $table) {
+            Schema::dropIfExists($table);
+        }
 
         Schema::create('users', function (Blueprint $table) {
             $table->id();
@@ -157,6 +214,14 @@ class MobileAuthApiTest extends TestCase
             $table->timestamp('last_used_at')->nullable();
             $table->timestamp('expires_at')->nullable()->index();
             $table->timestamps();
+        });
+
+        Schema::create('permissions', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->string('guard_name');
+            $table->timestamps();
+            $table->unique(['name', 'guard_name']);
         });
 
         Schema::create('roles', function (Blueprint $table) {
@@ -202,6 +267,46 @@ class MobileAuthApiTest extends TestCase
             $table->date('starts_at')->nullable();
             $table->date('ends_at')->nullable();
             $table->string('status')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('data_pembayarans', function (Blueprint $table) {
+            $table->id();
+            $table->integer('nominal')->default(0);
+            $table->date('tgl_bayar')->nullable();
+            $table->softDeletes();
+            $table->timestamps();
+        });
+
+        Schema::create('pendapatan_lains', function (Blueprint $table) {
+            $table->id();
+            $table->integer('nominal')->default(0);
+            $table->date('tgl_bayar')->nullable();
+            $table->softDeletes();
+            $table->timestamps();
+        });
+
+        Schema::create('expenses', function (Blueprint $table) {
+            $table->id();
+            $table->integer('amount')->default(0);
+            $table->date('date_expense')->nullable();
+            $table->softDeletes();
+            $table->timestamps();
+        });
+
+        Schema::create('expense_ops', function (Blueprint $table) {
+            $table->id();
+            $table->integer('amount')->default(0);
+            $table->date('date_expense')->nullable();
+            $table->softDeletes();
+            $table->timestamps();
+        });
+
+        Schema::create('pengeluaran_lains', function (Blueprint $table) {
+            $table->id();
+            $table->integer('amount')->default(0);
+            $table->date('date_expense')->nullable();
+            $table->softDeletes();
             $table->timestamps();
         });
     }

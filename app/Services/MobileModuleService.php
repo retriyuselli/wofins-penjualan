@@ -1,0 +1,3533 @@
+<?php
+
+namespace App\Services;
+
+use App\Enums\JenisPiutang;
+use App\Enums\MonthEnum;
+use App\Enums\StatusPiutang;
+use App\Enums\StatusVendor;
+use App\Models\AccountManagerTarget;
+use App\Models\AssetDepreciation;
+use App\Models\BankStatement;
+use App\Models\BankTransaction;
+use App\Models\Category;
+use App\Models\DataPribadi;
+use App\Models\Document;
+use App\Models\DocumentApproval;
+use App\Models\Documentation;
+use App\Models\DocumentationCategory;
+use App\Models\DocumentAttachment;
+use App\Models\DocumentCategory;
+use App\Models\Employee;
+use App\Models\Expense;
+use App\Models\ExpenseOps;
+use App\Models\FixedAsset;
+use App\Models\NotaDinas;
+use App\Models\NotaDinasDetail;
+use App\Models\Order;
+use App\Models\PaymentMethod;
+use App\Models\Payroll;
+use App\Models\PembayaranPiutang;
+use App\Models\PendapatanLain;
+use App\Models\PengeluaranLain;
+use App\Models\Piutang;
+use App\Models\Product;
+use App\Models\Prospect;
+use App\Models\SimulasiProduk;
+use App\Models\Sop;
+use App\Models\SopCategory;
+use App\Models\User;
+use App\Models\Vendor;
+use App\Support\CompanySubscription;
+use App\Support\PricingPlans;
+use App\Support\ProFeatures;
+use App\Support\UserVisibility;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+
+class MobileModuleService
+{
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function catalog(?User $user): array
+    {
+        $items = [];
+
+        foreach ($this->definitions() as $key => $def) {
+            $allowed = $this->allows($user, $def);
+            $canCreate = $allowed && $this->canCreate($user, $def);
+            $count = $allowed ? $this->scopedQuery($def)->count() : 0;
+
+            $items[] = [
+                'key' => $key,
+                'title' => $def['title'],
+                'subtitle' => $def['subtitle'],
+                'icon' => $def['icon'],
+                'group' => $def['group'],
+                'group_label' => $def['group_label'],
+                'feature' => $def['feature'] ?? null,
+                'allowed' => $allowed,
+                'can_create' => $canCreate,
+                'plan_badge' => $allowed ? null : ($def['plan_badge'] ?? null),
+                'count' => $count,
+            ];
+        }
+
+        return $items;
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     * @return array{data: list<array<string, mixed>>, meta: array<string, mixed>}
+     */
+    public function paginate(?User $user, string $key, ?string $search, int $perPage, array $filters = []): array
+    {
+        $def = $this->definition($key);
+        $this->assertAllowed($user, $def);
+
+        $query = $this->scopedQuery($def);
+        $search = trim((string) $search);
+
+        if ($search !== '') {
+            $columns = $def['search'] ?? [$def['title_attr'] ?? 'name'];
+            $query->where(function (Builder $q) use ($columns, $search, $def) {
+                $table = (new $def['model'])->getTable();
+                $first = true;
+                foreach ($columns as $column) {
+                    if (str_contains((string) $column, '.')) {
+                        [$relation, $relColumn] = explode('.', (string) $column, 2);
+                        $method = $first ? 'whereHas' : 'orWhereHas';
+                        $q->{$method}($relation, function (Builder $relationQuery) use ($relColumn, $search) {
+                            $relationQuery->where($relColumn, 'like', '%'.$search.'%');
+                        });
+                    } else {
+                        $method = $first ? 'where' : 'orWhere';
+                        $q->{$method}($table.'.'.$column, 'like', '%'.$search.'%');
+                    }
+                    $first = false;
+                }
+            });
+        }
+
+        foreach ($def['list_filters'] ?? [] as $filterDef) {
+            $filterKey = (string) ($filterDef['key'] ?? '');
+            if ($filterKey === '' || ! array_key_exists($filterKey, $filters)) {
+                continue;
+            }
+            $raw = $filters[$filterKey];
+            if ($raw === null || $raw === '') {
+                continue;
+            }
+            $column = (string) ($filterDef['column'] ?? $filterKey);
+            $query->where($column, (int) $raw);
+        }
+
+        if (! empty($def['with'])) {
+            $query->with($def['with']);
+        }
+
+        $paginator = $query
+            ->latest('id')
+            ->paginate(min(max($perPage, 1), 50));
+
+        $meta = [
+            'current_page' => $paginator->currentPage(),
+            'last_page' => $paginator->lastPage(),
+            'per_page' => $paginator->perPage(),
+            'total' => $paginator->total(),
+            'title' => $def['title'],
+            'can_create' => $this->canCreate($user, $def),
+            'filters' => $this->listFilterPayload($def, $filters),
+        ];
+
+        return [
+            'data' => collect($paginator->items())
+                ->map(fn (Model $model) => $this->mapRecord($key, $def, $model, false))
+                ->values()
+                ->all(),
+            'meta' => $meta,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $def
+     * @param  array<string, mixed>  $selected
+     * @return list<array<string, mixed>>
+     */
+    private function listFilterPayload(array $def, array $selected): array
+    {
+        $rows = [];
+        foreach ($def['list_filters'] ?? [] as $filterDef) {
+            $key = (string) ($filterDef['key'] ?? '');
+            if ($key === '') {
+                continue;
+            }
+            $optionsSource = $filterDef['options'] ?? [];
+            $options = is_string($optionsSource)
+                ? $this->options($optionsSource)
+                : (is_array($optionsSource) ? $this->options($optionsSource) : []);
+
+            $rows[] = [
+                'key' => $key,
+                'label' => (string) ($filterDef['label'] ?? $key),
+                'value' => isset($selected[$key]) && $selected[$key] !== '' && $selected[$key] !== null
+                    ? (string) $selected[$key]
+                    : null,
+                'options' => $options,
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function form(?User $user, string $key, ?int $id = null): array
+    {
+        $def = $this->definition($key);
+        $this->assertAllowed($user, $def);
+
+        if ($id === null && ! $this->canCreate($user, $def)) {
+            $quota = $def['quota'] ?? null;
+            throw new HttpResponseException(response()->json([
+                'message' => $quota
+                    ? CompanySubscription::fullMessage($quota)
+                    : 'Penambahan data tidak tersedia untuk modul ini.',
+            ], 403));
+        }
+
+        $record = $id ? $this->findModel($user, $key, $id) : null;
+        if ($id && ! $record) {
+            throw new HttpResponseException(response()->json([
+                'message' => 'Data tidak ditemukan.',
+            ], 404));
+        }
+
+        $fields = [];
+        foreach ($def['fields'] ?? [] as $field) {
+            $row = [
+                'name' => $field['name'],
+                'label' => $field['label'],
+                'type' => $field['type'],
+                'required' => (bool) ($field['required'] ?? false),
+                'placeholder' => $field['placeholder'] ?? null,
+            ];
+
+            if (($field['type'] ?? '') === 'select') {
+                $row['options'] = $key === 'simulasi' && ($field['options'] ?? '') === 'products'
+                    ? $this->simulasiProductOptions()
+                    : $this->options($field['options'] ?? []);
+            }
+            if (! empty($field['helper'])) {
+                $row['helper'] = $field['helper'];
+            }
+            if (! empty($field['readonly'])) {
+                $row['readonly'] = true;
+            }
+            if (! empty($field['section'])) {
+                $row['section'] = $field['section'];
+            }
+
+            $fields[] = $row;
+        }
+
+        if ($record instanceof SimulasiProduk) {
+            $fields = $this->ensureSimulasiProspectOption($fields, $record);
+        }
+
+        $payload = [
+            'title' => ($id ? 'Edit ' : 'Tambah ').$def['title'],
+            'can_create' => $id !== null || $this->canCreate($user, $def),
+            'fields' => $fields,
+        ];
+
+        if ($key === 'simulasi') {
+            $payload['defaults'] = [
+                'user_id' => $user?->id ? (string) $user->id : null,
+            ];
+            $payload['months'] = collect(MonthEnum::cases())
+                ->map(fn (MonthEnum $month) => [
+                    'value' => $month->value,
+                    'label' => (string) $month->getLabel(),
+                ])
+                ->values()
+                ->all();
+        }
+
+        if ($key === 'products' && $id === null) {
+            $payload['defaults'] = [
+                'stock' => '10',
+                'pax' => '1000',
+                'pax_akad' => '100',
+                'is_active' => '1',
+                'price' => '0',
+                'product_price' => '0',
+                'pengurangan' => '0',
+                'penambahan_publish' => '0',
+                'penambahan_vendor' => '0',
+            ];
+        }
+
+        if ($key === 'products') {
+            $payload['vendor_options'] = $this->productVendorOptions();
+            if ($record instanceof Product) {
+                $record->loadMissing(['items.vendor', 'pengurangans', 'penambahanHarga.vendor']);
+                $payload['defaults'] = array_merge(
+                    $payload['defaults'] ?? [],
+                    $this->formValues($def, $record)
+                );
+                $payload['items'] = $this->serializeProductItems($record);
+                $payload['discounts'] = $this->serializeProductDiscounts($record);
+                $payload['additions'] = $this->serializeProductAdditions($record);
+            } else {
+                $payload['items'] = [];
+                $payload['discounts'] = [];
+                $payload['additions'] = [];
+            }
+        }
+
+        if ($key === 'vendors') {
+            if ($id === null) {
+                $payload['defaults'] = [
+                    'status' => 'product',
+                    'stock' => '10',
+                    'harga_publish' => '0',
+                    'harga_vendor' => '0',
+                    'profit_amount' => '0',
+                    'profit_margin' => '0',
+                    'is_master' => '0',
+                    'is_published' => '0',
+                ];
+            }
+            if ($record instanceof Vendor) {
+                $record->loadMissing(['priceHistories']);
+                $payload['defaults'] = array_merge(
+                    $payload['defaults'] ?? [],
+                    $this->formValues($def, $record)
+                );
+                // profit_margin stored as basis points (x100); show as percent for mobile
+                if (isset($payload['defaults']['profit_margin'])) {
+                    $payload['defaults']['profit_margin'] = (string) round(((float) $payload['defaults']['profit_margin']) / 100, 2);
+                }
+                $payload['price_histories'] = $this->serializeVendorPriceHistories($record);
+            } else {
+                $payload['price_histories'] = [];
+            }
+        }
+
+        if ($key === 'documents') {
+            if ($id === null) {
+                $payload['defaults'] = [
+                    'confidentiality' => 'internal',
+                    'use_digital_signature' => '1',
+                    'show_confidentiality_warning' => '0',
+                ];
+            }
+            if ($record instanceof Document) {
+                $payload['defaults'] = array_merge(
+                    $payload['defaults'] ?? [],
+                    $this->formValues($def, $record)
+                );
+            }
+        }
+
+        return $payload;
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     * @return array<string, mixed>
+     */
+    public function store(?User $user, string $key, array $input): array
+    {
+        $def = $this->definition($key);
+        $this->assertAllowed($user, $def);
+
+        if (! $this->canCreate($user, $def)) {
+            $quota = $def['quota'] ?? null;
+            throw new HttpResponseException(response()->json([
+                'message' => $quota
+                    ? CompanySubscription::fullMessage($quota)
+                    : 'Penambahan data tidak tersedia untuk modul ini.',
+            ], 403));
+        }
+
+        $model = DB::transaction(function () use ($user, $key, $def, $input): Model {
+            $companyId = UserVisibility::companyId($user);
+            if ($companyId) {
+                DB::table('companies')->where('id', $companyId)->lockForUpdate()->first();
+            }
+
+            if (! $this->canCreate($user, $def)) {
+                $quota = $def['quota'] ?? null;
+                throw new HttpResponseException(response()->json([
+                    'message' => $quota
+                        ? CompanySubscription::fullMessage($quota)
+                        : 'Penambahan data tidak tersedia untuk modul ini.',
+                ], 403));
+            }
+
+            $data = $this->validated($def, $input);
+            if ($key === 'simulasi') {
+                $data['payment_simulation'] = $input['payment_simulation'] ?? [];
+            }
+            $data = $this->prepare($user, $key, $def, $data, null);
+
+            $modelClass = $def['model'];
+            /** @var Model $created */
+            $created = $modelClass::query()->create($data);
+            if ($key === 'products' && $created instanceof Product) {
+                $this->syncProductRelations($created, $input);
+            }
+            if ($key === 'vendors' && $created instanceof Vendor) {
+                $this->syncVendorPriceHistories($created, $input);
+            }
+            $this->afterSave($key, $created, true);
+
+            return $created;
+        }, 3);
+
+        return $this->detail($user, $key, (int) $model->getKey()) ?? $this->mapRecord($key, $def, $model->fresh(), true);
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     * @return array<string, mixed>|null
+     */
+    public function update(?User $user, string $key, int $id, array $input): ?array
+    {
+        $def = $this->definition($key);
+        $this->assertAllowed($user, $def);
+
+        if (($def['can_update'] ?? true) === false) {
+            throw new HttpResponseException(response()->json([
+                'message' => 'Perubahan data modul ini hanya tersedia di admin desktop.',
+            ], 403));
+        }
+        if ($key === 'team' && ! UserVisibility::actorIsSuperAdmin() && ! UserVisibility::isTeamOwner($user)) {
+            throw new HttpResponseException(response()->json([
+                'message' => 'Hanya pemilik paket yang dapat memperbarui anggota tim.',
+            ], 403));
+        }
+
+        /** @var Model|null $model */
+        $model = $this->scopedQuery($def)->find($id);
+        if (! $model) {
+            return null;
+        }
+        Gate::forUser($user)->authorize('update', $model);
+
+        $data = $this->validated($def, $input, $id);
+        if ($key === 'simulasi' && array_key_exists('payment_simulation', $input)) {
+            $data['payment_simulation'] = $input['payment_simulation'];
+        }
+        $data = $this->prepare($user, $key, $def, $data, $model);
+        $model->fill($data);
+        $model->save();
+        if ($key === 'products' && $model instanceof Product) {
+            $this->syncProductRelations($model, $input);
+        }
+        if ($key === 'vendors' && $model instanceof Vendor) {
+            $this->syncVendorPriceHistories($model, $input);
+        }
+        $this->afterSave($key, $model, false);
+
+        return $this->detail($user, $key, $id);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function detail(?User $user, string $key, int $id): ?array
+    {
+        $def = $this->definition($key);
+        $this->assertAllowed($user, $def);
+
+        $query = $this->scopedQuery($def);
+        if (! empty($def['with'])) {
+            $query->with($def['with']);
+        }
+        if (! empty($def['detail_with'])) {
+            $query->with($def['detail_with']);
+        }
+
+        /** @var Model|null $model */
+        $model = $query->find($id);
+        if ($model) {
+            Gate::forUser($user)->authorize('view', $model);
+        }
+
+        return $model ? $this->mapRecord($key, $def, $model, true) : null;
+    }
+
+    public function findModel(?User $user, string $key, int $id): ?Model
+    {
+        $def = $this->definition($key);
+        $this->assertAllowed($user, $def);
+
+        $model = $this->scopedQuery($def)->find($id);
+        if ($model) {
+            Gate::forUser($user)->authorize('view', $model);
+        }
+
+        return $model;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function definition(string $key): array
+    {
+        $definitions = $this->definitions();
+        if (! isset($definitions[$key])) {
+            throw new HttpResponseException(response()->json([
+                'message' => 'Modul tidak ditemukan.',
+            ], 404));
+        }
+
+        return $definitions[$key];
+    }
+
+    /**
+     * @param  array<string, mixed>  $def
+     */
+    private function allows(?User $user, array $def): bool
+    {
+        if (! $user || UserVisibility::companyId($user) === null) {
+            return false;
+        }
+
+        if (! Gate::forUser($user)->allows('viewAny', $def['model'])) {
+            return false;
+        }
+
+        if (! empty($def['allowed_team'])) {
+            if (ProFeatures::actorIsSuperAdmin()) {
+                return true;
+            }
+            if (ProFeatures::allows(PricingPlans::FEATURE_ROLE_MANAGEMENT)) {
+                return true;
+            }
+            $limit = CompanySubscription::seatLimit();
+
+            return $limit === null || $limit > 1;
+        }
+
+        $feature = $def['feature'] ?? null;
+        if ($feature === null) {
+            return true;
+        }
+
+        return ProFeatures::allows($feature);
+    }
+
+    /**
+     * @param  array<string, mixed>  $def
+     */
+    private function assertAllowed(?User $user, array $def): void
+    {
+        if ($this->allows($user, $def)) {
+            return;
+        }
+
+        $feature = $def['feature'] ?? PricingPlans::FEATURE_PROJECTS;
+
+        throw new HttpResponseException(response()->json([
+            'message' => CompanySubscription::upgradeMessage($feature),
+        ], 403));
+    }
+
+    /**
+     * @param  array<string, mixed>  $def
+     */
+    private function canCreate(?User $user, array $def): bool
+    {
+        if (($def['can_create'] ?? true) === false) {
+            return false;
+        }
+
+        if (! $user || ! Gate::forUser($user)->allows('create', $def['model'])) {
+            return false;
+        }
+
+        $quota = $def['quota'] ?? null;
+        if ($quota) {
+            return CompanySubscription::canCreate($quota);
+        }
+
+        return true;
+    }
+
+    /**
+     * @param  array<string, mixed>  $def
+     */
+    private function scopedQuery(array $def): Builder
+    {
+        $modelClass = $def['model'];
+        $query = $modelClass::query();
+        $table = (new $modelClass)->getTable();
+        $companyId = UserVisibility::companyId();
+
+        if (! empty($def['company_scope']) && Schema::hasColumn($table, 'company_id')) {
+            if ($companyId === null) {
+                $query->whereRaw('1 = 0');
+            } else {
+                $query->where($table.'.company_id', $companyId);
+            }
+        } elseif (ProFeatures::actorIsSuperAdmin() && Schema::hasColumn($table, 'company_id')) {
+            if ($companyId === null) {
+                $query->whereRaw('1 = 0');
+            } else {
+                $query->where($table.'.company_id', $companyId);
+            }
+        }
+
+        if (! empty($def['scope']) && is_callable($def['scope'])) {
+            $def['scope']($query, $companyId);
+        }
+
+        return $query;
+    }
+
+    /**
+     * @param  array<string, mixed>  $def
+     * @param  array<string, mixed>  $input
+     * @return array<string, mixed>
+     */
+    private function validated(array $def, array $input, ?int $ignoreId = null): array
+    {
+        $companyId = UserVisibility::companyId();
+        $rules = [];
+
+        foreach ($def['fields'] ?? [] as $field) {
+            $name = $field['name'];
+            $rule = [];
+            $rule[] = ($field['required'] ?? false) ? 'required' : 'nullable';
+
+            switch ($field['type']) {
+                case 'number':
+                    $rule[] = 'numeric';
+                    $rule[] = 'min:0';
+                    break;
+                case 'date':
+                    $rule[] = 'date';
+                    break;
+                case 'toggle':
+                    $rule[] = 'boolean';
+                    break;
+                case 'textarea':
+                    $rule[] = 'string';
+                    $rule[] = 'max:'.(int) ($field['max'] ?? 5000);
+                    break;
+                case 'email':
+                    $rule[] = 'email';
+                    $rule[] = 'max:255';
+                    break;
+                case 'select':
+                    break;
+                default:
+                    $rule[] = 'string';
+                    $rule[] = 'max:255';
+                    break;
+            }
+
+            if (($field['type'] ?? '') === 'select' && is_string($field['options'] ?? null)) {
+                $exists = $this->existsRule($field['options'], $companyId);
+                if ($exists) {
+                    $rule[] = $exists;
+                }
+            }
+
+            if (! empty($field['in']) && is_array($field['in'])) {
+                $rule[] = Rule::in($field['in']);
+            }
+
+            if (! empty($field['unique'])) {
+                $unique = Rule::unique($field['unique'][0], $field['unique'][1] ?? $name);
+                if ($companyId && Schema::hasColumn($field['unique'][0], 'company_id')) {
+                    $unique->where('company_id', $companyId);
+                }
+                if ($ignoreId) {
+                    $unique->ignore($ignoreId);
+                }
+                $rule[] = $unique;
+            }
+
+            $rules[$name] = $rule;
+        }
+
+        $validator = validator($input, $rules);
+        $data = $validator->validate();
+
+        foreach ($data as $key => $value) {
+            if (is_string($value) && trim($value) === '') {
+                $data[$key] = null;
+            }
+        }
+
+        foreach ($def['fields'] ?? [] as $field) {
+            $name = $field['name'];
+            if (! array_key_exists($name, $data)) {
+                continue;
+            }
+            $cast = $field['cast'] ?? match ($field['type']) {
+                'number' => 'int',
+                'toggle' => 'bool',
+                default => null,
+            };
+            if ($cast === 'int' && $data[$name] !== null) {
+                $data[$name] = (int) round((float) $data[$name]);
+            }
+            if ($cast === 'bool' && $data[$name] !== null) {
+                $data[$name] = filter_var($data[$name], FILTER_VALIDATE_BOOLEAN);
+            }
+        }
+
+        return $data;
+    }
+
+    private function existsRule(string $optionsKey, ?int $companyId): ?object
+    {
+        $table = match ($optionsKey) {
+            'payment_methods' => 'payment_methods',
+            'vendors' => 'vendors',
+            'parent_vendors' => 'vendors',
+            'orders' => 'orders',
+            'prospects' => 'prospects',
+            'open_prospects' => 'prospects',
+            'products' => 'products',
+            'employees' => 'employees',
+            'users' => 'users',
+            'account_managers' => 'users',
+            'categories' => 'categories',
+            'nota_dinas' => 'nota_dinas',
+            'piutangs' => 'piutangs',
+            'document_categories' => 'document_categories',
+            'sop_categories' => 'sop_categories',
+            'documentation_categories' => 'documentation_categories',
+            default => null,
+        };
+
+        if (! $table) {
+            return null;
+        }
+
+        $rule = Rule::exists($table, 'id');
+        if ($companyId && Schema::hasColumn($table, 'company_id')) {
+            $rule->where('company_id', $companyId);
+        }
+
+        return $rule;
+    }
+
+    /**
+     * @param  array<string, mixed>  $def
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function prepare(?User $user, string $key, array $def, array $data, ?Model $existing): array
+    {
+        unset($data['company_id'], $data['id']);
+
+        $companyId = UserVisibility::companyId($user);
+        $modelClass = $def['model'];
+        $table = (new $modelClass)->getTable();
+
+        if ($companyId && Schema::hasColumn($table, 'company_id')) {
+            $data['company_id'] = $companyId;
+        }
+
+        return match ($key) {
+            'products' => $this->prepareProduct($user, $data, $existing),
+            'vendors' => $this->prepareVendor($user, $data, $existing),
+            'categories' => $this->prepareCategory($data, $existing),
+            'nota_dinas' => $this->prepareNotaDinas($user, $data, $existing),
+            'nota_dinas_details' => $this->prepareNotaDinasDetail($data),
+            'simulasi' => $this->prepareSimulasi($user, $data, $existing),
+            'payment_methods' => $this->preparePaymentMethod($data),
+            'piutangs' => $this->preparePiutang($user, $data, $existing),
+            'pembayaran_piutangs' => $this->preparePembayaranPiutang($user, $data, $existing),
+            'expenses' => $this->prepareExpense($data),
+            'expense_ops' => $this->prepareNamedExpense($data, 'uang_keluar'),
+            'pengeluaran_lains' => $this->prepareNamedExpense($data, 'uang_keluar'),
+            'pendapatan_lains' => $this->preparePendapatanLain($data),
+            'fixed_assets' => $this->prepareFixedAsset($data, $existing),
+            'bank_statements' => $this->prepareBankStatement($data, $existing),
+            'employees' => $this->prepareEmployee($data),
+            'payrolls' => $this->preparePayroll($data),
+            'documents' => $this->prepareDocument($user, $data, $existing),
+            'sops' => $this->prepareSop($user, $data, $existing),
+            'documentations' => $this->prepareDocumentation($data, $existing),
+            'documentation_categories' => $this->prepareDocumentationCategory($data, $existing),
+            'data_pribadis' => $this->prepareDataPribadi($data),
+            'team' => $this->prepareTeam($user, $data, $existing),
+            default => $data,
+        };
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function prepareProduct(?User $user, array $data, ?Model $existing): array
+    {
+        if (empty($data['slug'])) {
+            $data['slug'] = Product::generateUniqueSlug((string) ($data['name'] ?? 'paket'));
+        }
+        if (! $existing) {
+            $data['created_by'] = $user?->id;
+            $data['is_active'] = array_key_exists('is_active', $data)
+                ? (bool) $data['is_active']
+                : true;
+            $data['stock'] = $data['stock'] ?? 10;
+            $data['pax'] = $data['pax'] ?? 1000;
+            $data['pax_akad'] = $data['pax_akad'] ?? 100;
+            $data['product_price'] = $data['product_price'] ?? ($data['price'] ?? 0);
+            $data['pengurangan'] = $data['pengurangan'] ?? 0;
+            $data['penambahan_publish'] = $data['penambahan_publish'] ?? 0;
+            $data['penambahan_vendor'] = $data['penambahan_vendor'] ?? 0;
+        } else {
+            if (array_key_exists('is_active', $data)) {
+                $data['is_active'] = (bool) $data['is_active'];
+            }
+        }
+
+        return $data;
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function productVendorOptions(): array
+    {
+        $companyId = UserVisibility::companyId();
+
+        return Vendor::query()
+            ->when($companyId && Schema::hasColumn((new Vendor)->getTable(), 'company_id'), fn ($q) => $q->where('company_id', $companyId))
+            ->orderBy('name')
+            ->get(['id', 'name', 'harga_publish', 'harga_vendor', 'description'])
+            ->map(function (Vendor $vendor) {
+                $active = method_exists($vendor, 'activePrice') ? $vendor->activePrice() : null;
+                $publish = (int) ($active?->harga_publish ?? $vendor->harga_publish ?? 0);
+                $vendorPrice = (int) ($active?->harga_vendor ?? $vendor->harga_vendor ?? 0);
+
+                return [
+                    'value' => (string) $vendor->id,
+                    'label' => (string) $vendor->name,
+                    'harga_publish' => $publish,
+                    'harga_vendor' => $vendorPrice,
+                    'description' => $this->plainText((string) ($vendor->description ?? '')) ?? '',
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function serializeProductItems(Product $product): array
+    {
+        return $product->items->map(function ($item) {
+            $qty = max(1, (int) ($item->quantity ?? 1));
+            $publish = (int) ($item->harga_publish ?? 0);
+            $vendor = (int) ($item->harga_vendor ?? 0);
+
+            return [
+                'id' => (int) $item->id,
+                'vendor_id' => $item->vendor_id ? (string) $item->vendor_id : '',
+                'harga_publish' => $publish,
+                'harga_vendor' => $vendor,
+                'quantity' => $qty,
+                'price_public' => (int) ($item->price_public ?: $publish * $qty),
+                'total_price' => (int) ($item->total_price ?: $vendor * $qty),
+                'description' => $this->plainText((string) ($item->description ?? '')) ?? '',
+            ];
+        })->values()->all();
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function serializeProductDiscounts(Product $product): array
+    {
+        return $product->pengurangans->map(fn ($row) => [
+            'id' => (int) $row->id,
+            'description' => (string) ($row->description ?? ''),
+            'amount' => (int) ($row->amount ?? 0),
+            'notes' => $this->plainText((string) ($row->notes ?? '')) ?? '',
+        ])->values()->all();
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function serializeProductAdditions(Product $product): array
+    {
+        return $product->penambahanHarga->map(fn ($row) => [
+            'id' => (int) $row->id,
+            'vendor_id' => $row->vendor_id ? (string) $row->vendor_id : '',
+            'harga_publish' => (int) ($row->harga_publish ?? 0),
+            'harga_vendor' => (int) ($row->harga_vendor ?? 0),
+            'description' => $this->plainText((string) ($row->description ?? '')) ?? '',
+        ])->values()->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     */
+    private function syncProductRelations(Product $product, array $input): void
+    {
+        $items = is_array($input['items'] ?? null) ? $input['items'] : [];
+        $discounts = is_array($input['discounts'] ?? null) ? $input['discounts'] : [];
+        $additions = is_array($input['additions'] ?? null) ? $input['additions'] : [];
+
+        $this->assertProductVendorsBelongToCompany($product, [...$items, ...$additions]);
+
+        $product->items()->delete();
+        $product->pengurangans()->delete();
+        $product->penambahanHarga()->delete();
+
+        $totalPublish = 0;
+        $totalVendor = 0;
+        foreach ($items as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $vendorId = (int) ($row['vendor_id'] ?? 0);
+            if ($vendorId <= 0) {
+                continue;
+            }
+            $qty = max(1, (int) ($row['quantity'] ?? 1));
+            $hargaPublish = (int) ($row['harga_publish'] ?? 0);
+            $hargaVendor = (int) ($row['harga_vendor'] ?? 0);
+            $pricePublic = (int) ($row['price_public'] ?? ($hargaPublish * $qty));
+            $lineVendor = (int) ($row['total_price'] ?? ($hargaVendor * $qty));
+            $totalPublish += $pricePublic;
+            $totalVendor += $lineVendor;
+
+            $product->items()->create([
+                'vendor_id' => $vendorId,
+                'harga_publish' => $hargaPublish,
+                'harga_vendor' => $hargaVendor,
+                'quantity' => $qty,
+                'price_public' => $pricePublic,
+                'total_price' => $lineVendor,
+                'description' => (string) ($row['description'] ?? ''),
+            ]);
+        }
+
+        $totalDiscount = 0;
+        foreach ($discounts as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $amount = (int) ($row['amount'] ?? 0);
+            $description = trim((string) ($row['description'] ?? ''));
+            if ($description === '' && $amount <= 0) {
+                continue;
+            }
+            $totalDiscount += $amount;
+            $product->pengurangans()->create([
+                'description' => $description !== '' ? $description : 'Pengurangan',
+                'amount' => $amount,
+                'notes' => (string) ($row['notes'] ?? ''),
+            ]);
+        }
+
+        $totalAddPublish = 0;
+        $totalAddVendor = 0;
+        foreach ($additions as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $vendorId = (int) ($row['vendor_id'] ?? 0);
+            if ($vendorId <= 0) {
+                continue;
+            }
+            $hargaPublish = (int) ($row['harga_publish'] ?? 0);
+            $hargaVendor = (int) ($row['harga_vendor'] ?? 0);
+            $totalAddPublish += $hargaPublish;
+            $totalAddVendor += $hargaVendor;
+            $product->penambahanHarga()->create([
+                'vendor_id' => $vendorId,
+                'harga_publish' => $hargaPublish,
+                'harga_vendor' => $hargaVendor,
+                'description' => (string) ($row['description'] ?? ''),
+            ]);
+        }
+
+        $finalPrice = max(0, $totalPublish - $totalDiscount + $totalAddPublish);
+        $product->forceFill([
+            'product_price' => $totalPublish,
+            'pengurangan' => $totalDiscount,
+            'penambahan' => $totalAddPublish,
+            'penambahan_publish' => $totalAddPublish,
+            'penambahan_vendor' => $totalAddVendor,
+            'price' => $finalPrice,
+        ])->save();
+    }
+
+    /**
+     * @param  list<mixed>  $rows
+     */
+    private function assertProductVendorsBelongToCompany(Product $product, array $rows): void
+    {
+        $vendorIds = collect($rows)
+            ->filter(fn ($row) => is_array($row))
+            ->map(fn (array $row) => (int) ($row['vendor_id'] ?? 0))
+            ->filter(fn (int $id) => $id > 0)
+            ->unique()
+            ->values();
+
+        if ($vendorIds->isEmpty()) {
+            return;
+        }
+
+        $companyId = (int) ($product->company_id ?? 0);
+        $validCount = $companyId > 0
+            ? Vendor::query()
+                ->withoutGlobalScope('tenant_company')
+                ->where('company_id', $companyId)
+                ->whereKey($vendorIds->all())
+                ->count()
+            : 0;
+
+        if ($validCount !== $vendorIds->count()) {
+            throw new HttpResponseException(response()->json([
+                'message' => 'Vendor produk harus berasal dari perusahaan yang sama.',
+            ], 422));
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function prepareVendor(?User $user, array $data, ?Model $existing): array
+    {
+        if (empty($data['slug'])) {
+            $data['slug'] = Vendor::generateUniqueSlug((string) ($data['name'] ?? 'vendor'));
+        }
+        if (! $existing) {
+            $data['created_by'] = $user?->id;
+            $data['status'] = $data['status'] ?? StatusVendor::PRODUCT->value;
+            $data['stock'] = $data['stock'] ?? 10;
+            $data['is_master'] = array_key_exists('is_master', $data) ? (bool) $data['is_master'] : false;
+            $data['is_published'] = array_key_exists('is_published', $data) ? (bool) $data['is_published'] : false;
+        } else {
+            if (array_key_exists('is_master', $data)) {
+                $data['is_master'] = (bool) $data['is_master'];
+            }
+            if (array_key_exists('is_published', $data)) {
+                $data['is_published'] = (bool) $data['is_published'];
+            }
+        }
+
+        $data['harga_publish'] = (int) ($data['harga_publish'] ?? 0);
+        $data['harga_vendor'] = (int) ($data['harga_vendor'] ?? 0);
+        $data['profit_amount'] = $data['harga_publish'] - $data['harga_vendor'];
+        $marginPercent = $data['harga_publish'] > 0
+            ? ($data['profit_amount'] / $data['harga_publish']) * 100
+            : 0;
+        $data['profit_margin'] = (int) round($marginPercent * 100);
+
+        $status = is_object($data['status'] ?? null) && property_exists($data['status'], 'value')
+            ? $data['status']->value
+            : ($data['status'] ?? null);
+        if ($status !== StatusVendor::PRODUCT->value) {
+            $data['parent_id'] = null;
+        }
+
+        // Ignore client-sent readonly display margin (already recomputed above)
+        return $data;
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function serializeVendorPriceHistories(Vendor $vendor): array
+    {
+        return $vendor->priceHistories
+            ->sortByDesc('effective_from')
+            ->values()
+            ->map(function ($row) {
+                $publish = (int) ($row->harga_publish ?? 0);
+                $vendorPrice = (int) ($row->harga_vendor ?? 0);
+                $profit = (int) ($row->profit_amount ?? ($publish - $vendorPrice));
+                $marginRaw = (int) ($row->profit_margin ?? 0);
+
+                return [
+                    'id' => (int) $row->id,
+                    'effective_from' => optional($row->effective_from)?->format('Y-m-d'),
+                    'effective_to' => optional($row->effective_to)?->format('Y-m-d'),
+                    'harga_publish' => $publish,
+                    'harga_vendor' => $vendorPrice,
+                    'profit_amount' => $profit,
+                    'profit_margin' => round($marginRaw / 100, 2),
+                    'description' => (string) ($row->description ?? ''),
+                ];
+            })
+            ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     */
+    private function syncVendorPriceHistories(Vendor $vendor, array $input): void
+    {
+        $isMaster = (bool) ($vendor->is_master ?? false);
+        $rows = is_array($input['price_histories'] ?? null) ? $input['price_histories'] : [];
+
+        $vendor->priceHistories()->delete();
+
+        if (! $isMaster) {
+            return;
+        }
+
+        foreach ($rows as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $from = trim((string) ($row['effective_from'] ?? ''));
+            $to = trim((string) ($row['effective_to'] ?? ''));
+            if ($from === '' || $to === '') {
+                continue;
+            }
+            $publish = (int) ($row['harga_publish'] ?? 0);
+            $vendorPrice = (int) ($row['harga_vendor'] ?? 0);
+            $profit = $publish - $vendorPrice;
+            $marginPercent = $publish > 0 ? ($profit / $publish) * 100 : 0;
+
+            $vendor->priceHistories()->create([
+                'effective_from' => $from,
+                'effective_to' => $to,
+                'harga_publish' => $publish,
+                'harga_vendor' => $vendorPrice,
+                'profit_amount' => $profit,
+                'profit_margin' => (int) round($marginPercent * 100),
+                'description' => (string) ($row['description'] ?? ''),
+            ]);
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function prepareCategory(array $data, ?Model $existing): array
+    {
+        if (empty($data['slug'])) {
+            $base = Str::slug((string) ($data['name'] ?? 'kategori')) ?: 'kategori';
+            $slug = $base;
+            $i = 1;
+            while (Category::query()->where('slug', $slug)->when($existing, fn ($q) => $q->whereKeyNot($existing->getKey()))->exists()) {
+                $slug = $base.'-'.$i++;
+            }
+            $data['slug'] = $slug;
+        }
+        $data['is_active'] = $data['is_active'] ?? true;
+
+        return $data;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function prepareNotaDinas(?User $user, array $data, ?Model $existing): array
+    {
+        if (! $existing) {
+            $kategori = strtoupper((string) ($data['kategori_nd'] ?? 'BIS'));
+            $data['kategori_nd'] = $kategori;
+            $data['no_nd'] = NotaDinas::generateNomorND($kategori);
+            $data['pengirim_id'] = $user?->id;
+            $data['penerima_id'] = $data['penerima_id'] ?? $user?->id;
+            $data['status'] = $data['status'] ?? 'draft';
+            $data['sifat'] = $data['sifat'] ?? 'biasa';
+        }
+
+        return $data;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function prepareNotaDinasDetail(array $data): array
+    {
+        $data['jenis_pengeluaran'] = $data['jenis_pengeluaran'] ?? 'lain';
+        $data['status_invoice'] = $data['status_invoice'] ?? 'belum dibayar';
+
+        return $data;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function prepareSimulasi(?User $user, array $data, ?Model $existing): array
+    {
+        unset($data['customer_name']);
+
+        $product = ! empty($data['product_id']) ? Product::query()->find($data['product_id']) : null;
+        [$totalPrice, $penambahan, $pengurangan] = $product
+            ? $this->productPricing($product)
+            : [0, 0, 0];
+
+        $promo = (int) ($data['promo'] ?? $existing?->promo ?? 0);
+        $grand = max(0, $totalPrice + $penambahan - $promo - $pengurangan);
+
+        $data['total_price'] = $totalPrice;
+        $data['penambahan'] = $penambahan;
+        $data['pengurangan'] = $pengurangan;
+        $data['promo'] = $promo;
+        $data['grand_total'] = $grand;
+        $data['payment_dp_amount'] = (int) ($data['payment_dp_amount'] ?? 0);
+
+        $terms = $data['payment_simulation'] ?? [];
+        if (is_string($terms)) {
+            $decoded = json_decode($terms, true);
+            $terms = is_array($decoded) ? $decoded : [];
+        }
+        if (! is_array($terms)) {
+            $terms = [];
+        }
+
+        $normalized = [];
+        $termsTotal = 0;
+        foreach ($terms as $term) {
+            if (! is_array($term)) {
+                continue;
+            }
+            $nominal = (int) preg_replace('/[^\d]/', '', (string) ($term['nominal'] ?? 0));
+            $normalized[] = [
+                'persen' => $term['persen'] ?? null,
+                'nominal' => $nominal,
+                'bulan' => $term['bulan'] ?? null,
+                'tahun' => isset($term['tahun']) ? (int) $term['tahun'] : (int) now()->year,
+            ];
+            $termsTotal += $nominal;
+        }
+        $data['payment_simulation'] = $normalized;
+        $data['total_simulation'] = $data['payment_dp_amount'] + $termsTotal;
+
+        if (! empty($data['notes']) && ! str_contains((string) $data['notes'], '<')) {
+            $data['notes'] = '<p>'.e(trim((string) $data['notes'])).'</p>';
+        }
+
+        if (! $existing) {
+            $data['user_id'] = $data['user_id'] ?? $user?->id;
+            $prospect = ! empty($data['prospect_id']) ? Prospect::query()->find($data['prospect_id']) : null;
+            $base = $prospect?->name_event ?: ($product?->name ?: 'simulasi');
+            $data['slug'] = SimulasiProduk::generateUniqueSlug((string) $base);
+        }
+
+        return $data;
+    }
+
+    /**
+     * @return array{0: int, 1: int, 2: int}
+     */
+    private function productPricing(Product $product): array
+    {
+        $totalPrice = (int) ($product->product_price ?? 0);
+        $penambahan = (int) ($product->penambahan_publish ?? 0);
+        $pengurangan = (int) ($product->pengurangan ?? 0);
+
+        if ($totalPrice === 0) {
+            $totalPrice = (int) $product->items()->sum('price_public');
+        }
+        if ($penambahan === 0) {
+            $penambahan = (int) $product->penambahanHarga()->sum('harga_publish');
+        }
+        if ($pengurangan === 0) {
+            $pengurangan = (int) $product->pengurangans()->sum('amount');
+        }
+
+        return [$totalPrice, $penambahan, $pengurangan];
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function simulasiProductOptions(): array
+    {
+        return Product::query()
+            ->orderBy('name')
+            ->get()
+            ->map(function (Product $product) {
+                [$total, $add, $cut] = $this->productPricing($product);
+
+                return [
+                    'value' => (string) $product->id,
+                    'label' => (string) $product->name,
+                    'total_price' => $total,
+                    'penambahan' => $add,
+                    'pengurangan' => $cut,
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return list<array{value: string, label: string}>
+     */
+    private function accountManagerOptions(): array
+    {
+        $query = User::query();
+        UserVisibility::constrainUsersQuery($query);
+
+        $amQuery = (clone $query)->role('Account Manager');
+        if ($amQuery->exists()) {
+            $query->role('Account Manager');
+        }
+
+        return $query->orderBy('name')->get(['id', 'name'])->map(fn (User $row) => [
+            'value' => (string) $row->id,
+            'label' => (string) $row->name,
+        ])->values()->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function preparePaymentMethod(array $data): array
+    {
+        $data['is_cash'] = (bool) ($data['is_cash'] ?? false);
+        $data['opening_balance'] = (int) ($data['opening_balance'] ?? 0);
+
+        return $data;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function preparePiutang(?User $user, array $data, ?Model $existing): array
+    {
+        if (! $existing) {
+            $data['nomor_piutang'] = Piutang::generateNomorPiutang();
+            $data['dibuat_oleh'] = $user?->id;
+            $data['status'] = StatusPiutang::AKTIF->value;
+            $data['jenis_piutang'] = $data['jenis_piutang'] ?? JenisPiutang::BISNIS->value;
+            $data['sudah_dibayar'] = 0;
+        }
+        $pokok = (int) ($data['jumlah_pokok'] ?? 0);
+        $bunga = (int) ($data['persentase_bunga'] ?? 0);
+        $total = $pokok + (int) round($pokok * $bunga / 100);
+        $data['total_piutang'] = $total;
+        $paid = (int) ($existing?->sudah_dibayar ?? 0);
+        $data['sisa_piutang'] = max(0, $total - $paid);
+
+        return $data;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function preparePembayaranPiutang(?User $user, array $data, ?Model $existing): array
+    {
+        if (! $existing) {
+            $data['nomor_pembayaran'] = PembayaranPiutang::generateNomorPembayaran();
+            $data['dibayar_oleh'] = $user?->id;
+            $data['status'] = $data['status'] ?? 'confirmed';
+            $data['tanggal_dicatat'] = now()->toDateString();
+        }
+        $jumlah = (int) ($data['jumlah_pembayaran'] ?? 0);
+        $bunga = (int) ($data['jumlah_bunga'] ?? 0);
+        $denda = (int) ($data['denda'] ?? 0);
+        $data['total_pembayaran'] = $jumlah + $bunga + $denda;
+
+        return $data;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function prepareExpense(array $data): array
+    {
+        $data['kategori_transaksi'] = $data['kategori_transaksi'] ?? 'uang_keluar';
+
+        return $data;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function prepareNamedExpense(array $data, string $kategori): array
+    {
+        $data['kategori_transaksi'] = $data['kategori_transaksi'] ?? $kategori;
+
+        return $data;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function preparePendapatanLain(array $data): array
+    {
+        $data['kategori_transaksi'] = $data['kategori_transaksi'] ?? 'uang_masuk';
+
+        return $data;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function prepareFixedAsset(array $data, ?Model $existing): array
+    {
+        if (! $existing && empty($data['asset_code'])) {
+            $seq = FixedAsset::query()->withTrashed()->count() + 1;
+            $data['asset_code'] = 'FA-'.str_pad((string) $seq, 4, '0', STR_PAD_LEFT);
+        }
+        $price = (int) ($data['purchase_price'] ?? 0);
+        $data['current_book_value'] = $data['current_book_value'] ?? $price;
+        $data['accumulated_depreciation'] = $data['accumulated_depreciation'] ?? 0;
+        $data['is_active'] = $data['is_active'] ?? true;
+        $data['depreciation_method'] = $data['depreciation_method'] ?? 'STRAIGHT_LINE';
+        $data['useful_life_years'] = $data['useful_life_years'] ?? 5;
+
+        return $data;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function prepareBankStatement(array $data, ?Model $existing): array
+    {
+        if (! $existing) {
+            $data['status'] = $data['status'] ?? 'draft';
+            $data['source_type'] = $data['source_type'] ?? 'manual';
+            $data['uploaded_at'] = now();
+        }
+
+        return $data;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function prepareEmployee(array $data): array
+    {
+        return $data;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function preparePayroll(array $data): array
+    {
+        $pokok = (int) ($data['gaji_pokok'] ?? 0);
+        $tunjangan = (int) ($data['tunjangan'] ?? 0);
+        $pengurangan = (int) ($data['pengurangan'] ?? 0);
+        $monthly = $pokok + $tunjangan - $pengurangan;
+        $data['monthly_salary'] = $monthly;
+        $data['annual_salary'] = $monthly * 12;
+        $data['bonus'] = (int) ($data['bonus'] ?? 0);
+
+        return $data;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function prepareDocument(?User $user, array $data, ?Model $existing): array
+    {
+        if (! $existing) {
+            $data['created_by'] = $user?->id;
+            $data['status'] = $data['status'] ?? 'draft';
+            $data['confidentiality'] = $data['confidentiality'] ?? 'internal';
+            $data['use_digital_signature'] = array_key_exists('use_digital_signature', $data)
+                ? (bool) $data['use_digital_signature']
+                : true;
+            $data['show_confidentiality_warning'] = array_key_exists('show_confidentiality_warning', $data)
+                ? (bool) $data['show_confidentiality_warning']
+                : false;
+            // Biarkan observer mengisi nomor otomatis dari kategori.
+            unset($data['document_number']);
+        } else {
+            unset($data['document_number'], $data['status'], $data['created_by']);
+            if (array_key_exists('use_digital_signature', $data)) {
+                $data['use_digital_signature'] = (bool) $data['use_digital_signature'];
+            }
+            if (array_key_exists('show_confidentiality_warning', $data)) {
+                $data['show_confidentiality_warning'] = (bool) $data['show_confidentiality_warning'];
+            }
+        }
+
+        if (! empty($data['content']) && is_string($data['content']) && ! str_contains($data['content'], '<')) {
+            $data['content'] = '<p>'.e(trim($data['content'])).'</p>';
+        }
+
+        return $data;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function prepareSop(?User $user, array $data, ?Model $existing): array
+    {
+        if (! $existing) {
+            $data['created_by'] = $user?->id;
+            $data['is_active'] = $data['is_active'] ?? true;
+            $data['version'] = $data['version'] ?? '1.0';
+        }
+        $data['updated_by'] = $user?->id;
+
+        return $data;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function prepareDocumentation(array $data, ?Model $existing): array
+    {
+        if (empty($data['slug'])) {
+            $data['slug'] = Str::slug((string) ($data['title'] ?? 'artikel')).'-'.Str::lower(Str::random(4));
+        }
+        $data['is_published'] = $data['is_published'] ?? true;
+
+        return $data;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function prepareDocumentationCategory(array $data, ?Model $existing): array
+    {
+        if (empty($data['slug'])) {
+            $data['slug'] = Str::slug((string) ($data['name'] ?? 'kategori'));
+        }
+        $data['is_active'] = $data['is_active'] ?? true;
+
+        return $data;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function prepareDataPribadi(array $data): array
+    {
+        unset($data['gaji'], $data['gaji_encrypted']);
+
+        return $data;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function prepareTeam(?User $user, array $data, ?Model $existing): array
+    {
+        if ($existing) {
+            unset($data['password']);
+        }
+        if (! $existing) {
+            $data['created_by'] = $user?->id;
+            $data['status'] = $data['status'] ?? 'active';
+            $data['email_verified_at'] = now();
+        }
+
+        return $data;
+    }
+
+    private function afterSave(string $key, Model $model, bool $created): void
+    {
+        if ($key === 'piutangs' && $model instanceof Piutang) {
+            $model->hitungTotalPiutang();
+        }
+
+        if ($key === 'pembayaran_piutangs' && $model instanceof PembayaranPiutang) {
+            $piutang = $model->piutang;
+            if ($piutang) {
+                $piutang->sudah_dibayar = (int) $piutang->pembayaranPiutangs()->sum('jumlah_pembayaran');
+                $piutang->hitungTotalPiutang();
+                $piutang->updateStatus();
+            }
+        }
+
+        if ($key === 'team' && $created && $model instanceof User) {
+            try {
+                $model->assignRole('pengunjung');
+            } catch (\Throwable) {
+                // Role may not exist on a given tenant install.
+            }
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $def
+     * @return array<string, mixed>
+     */
+    private function mapRecord(string $key, array $def, Model $model, bool $detailed): array
+    {
+        $titleAttr = $def['title_attr'] ?? 'name';
+        $status = $this->scalar($model->{$def['status_attr'] ?? 'status'} ?? null);
+        $amountAttr = $def['amount_attr'] ?? null;
+
+        $title = $this->stringValue($this->value($model, $titleAttr));
+
+        if ($key === 'bank_statements' && $model instanceof BankStatement) {
+            $rawRecon = $this->stringValue($model->reconciliation_status);
+            $status = BankStatement::getReconciliationStatusOptions()[$rawRecon]
+                ?? ($rawRecon !== '' ? $rawRecon : null);
+        }
+
+        if ($key === 'vendors' && $model instanceof Vendor) {
+            $status = $this->stringValue($model->status) ?: null;
+        }
+
+        $payload = [
+            'id' => (int) $model->getKey(),
+            'title' => $title !== '' ? $title : ($def['title'].' #'.$model->getKey()),
+            'subtitle' => $this->subtitle($def, $model),
+            'amount' => $amountAttr ? (int) ($this->value($model, $amountAttr) ?? 0) : null,
+            'status' => $status,
+            'date' => $this->dateValue($model, $def['date_attr'] ?? null),
+        ];
+
+        if ($detailed) {
+            $payload['fields'] = $this->detailFields($def, $model);
+            $payload['children'] = $this->children($key, $model);
+            $payload['values'] = $this->formValues($def, $model);
+            if ($key === 'simulasi' && $model instanceof SimulasiProduk) {
+                $payload['payment_simulation'] = collect($model->payment_simulation ?? [])
+                    ->map(function ($term) {
+                        $term = is_array($term) ? $term : [];
+
+                        return [
+                            'persen' => isset($term['persen']) ? (string) $term['persen'] : null,
+                            'nominal' => (int) ($term['nominal'] ?? 0),
+                            'bulan' => $term['bulan'] ?? null,
+                            'tahun' => isset($term['tahun']) ? (int) $term['tahun'] : null,
+                        ];
+                    })
+                    ->values()
+                    ->all();
+            }
+            if ($key === 'bank_statements' && $model instanceof BankStatement) {
+                $this->applyBankStatementDetail($payload, $model);
+            }
+            if ($key === 'documents' && $model instanceof Document) {
+                $this->applyDocumentDetail($payload, $model);
+            }
+        }
+
+        if ($key === 'products' && $model instanceof Product) {
+            try {
+                if ($detailed) {
+                    $serialized = app(FinanceSummaryService::class)->serializeProductDetail($model);
+                    $payload['product'] = $serialized;
+                    $this->applyProductTotals($payload, $serialized);
+                } else {
+                    $this->applyLiveProductAmount($payload, $model);
+                }
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        }
+
+        if ($imageUrl = $this->imageUrl($def, $model)) {
+            $payload['image_url'] = $imageUrl;
+        }
+
+        return $payload;
+    }
+
+    /**
+     * Absolute public URL for list/detail thumbnails (e.g. crew foto).
+     *
+     * @param  array<string, mixed>  $def
+     */
+    private function imageUrl(array $def, Model $model): ?string
+    {
+        $attr = $def['image_attr'] ?? null;
+        if (! is_string($attr) || $attr === '') {
+            return null;
+        }
+
+        $path = $this->stringValue($this->value($model, $attr));
+        if ($path === '') {
+            return null;
+        }
+
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+            return $path;
+        }
+
+        return url(Storage::disk('public')->url(ltrim($path, '/')));
+    }
+
+    /**
+     * List paket: amount = Total Paket (final_publish), bukan kolom `price` / Subtotal.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    private function applyLiveProductAmount(array &$payload, Product $product): void
+    {
+        $pricing = ProductPricingCalculator::calculateForProduct($product);
+        $payload['amount'] = (int) ($pricing['final_publish'] ?? 0);
+    }
+
+    /**
+     * Header & field harga mengikuti Total Paket (final_publish), bukan kolom `price` mentah.
+     *
+     * @param  array<string, mixed>  $payload
+     * @param  array<string, mixed>  $serialized
+     */
+    private function applyProductTotals(array &$payload, array $serialized): void
+    {
+        $totalPublish = (int) ($serialized['pricing']['total_publish'] ?? $serialized['price'] ?? 0);
+        $totalVendor = (int) ($serialized['pricing']['total_vendor'] ?? $serialized['vendor_price'] ?? 0);
+        $payload['amount'] = $totalPublish;
+
+        $payload['fields'] = array_map(function (array $field) use ($totalPublish, $totalVendor) {
+            $label = strtolower(trim((string) ($field['label'] ?? '')));
+            if ($label === 'harga') {
+                return [
+                    'label' => 'Total Paket',
+                    'value' => $this->displayValue($totalPublish, 'money'),
+                ];
+            }
+            if ($label === 'harga vendor') {
+                return [
+                    'label' => 'Total Vendor',
+                    'value' => $this->displayValue($totalVendor, 'money'),
+                ];
+            }
+
+            return $field;
+        }, $payload['fields'] ?? []);
+    }
+
+    /**
+     * @param  array<string, mixed>  $def
+     */
+    private function subtitle(array $def, Model $model): ?string
+    {
+        if (! empty($def['subtitle_attr'])) {
+            $value = $this->stringValue($this->value($model, $def['subtitle_attr']));
+
+            return $value !== '' ? $value : null;
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $def
+     * @return list<array{label: string, value: string|null}>
+     */
+    private function detailFields(array $def, Model $model): array
+    {
+        $rows = [];
+        foreach ($def['detail'] ?? [] as $item) {
+            $rows[] = [
+                'label' => $item['label'],
+                'value' => $this->displayValue($this->value($model, $item['attr']), $item['format'] ?? null),
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @param  array<string, mixed>  $def
+     * @return array<string, string>
+     */
+    private function formValues(array $def, Model $model): array
+    {
+        $values = [];
+        foreach ($def['fields'] ?? [] as $field) {
+            $name = $field['name'] ?? null;
+            if (! is_string($name) || $name === '') {
+                continue;
+            }
+
+            $raw = $model->{$name} ?? null;
+            if ($raw === null || $raw === '') {
+                continue;
+            }
+
+            if ($name === 'notes' || $name === 'free_pengurangan' || $name === 'description' || $name === 'content' || $name === 'summary') {
+                $plain = $this->plainText((string) $raw);
+                if ($plain) {
+                    $values[$name] = $plain;
+                }
+
+                continue;
+            }
+
+            if ($raw instanceof \DateTimeInterface) {
+                $values[$name] = $raw->format('Y-m-d');
+
+                continue;
+            }
+
+            if (is_bool($raw)) {
+                $values[$name] = $raw ? '1' : '0';
+
+                continue;
+            }
+
+            if ($raw instanceof \BackedEnum) {
+                $values[$name] = (string) $raw->value;
+
+                continue;
+            }
+
+            if ($raw instanceof \UnitEnum) {
+                $values[$name] = $raw->name;
+
+                continue;
+            }
+
+            if (is_scalar($raw)) {
+                $values[$name] = (string) $raw;
+            }
+        }
+
+        return $values;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $fields
+     * @return list<array<string, mixed>>
+     */
+    private function ensureSimulasiProspectOption(array $fields, SimulasiProduk $record): array
+    {
+        $record->loadMissing('prospect:id,name_event');
+        if (! $record->prospect_id || ! $record->prospect) {
+            return $fields;
+        }
+
+        foreach ($fields as $index => $field) {
+            if (($field['name'] ?? '') !== 'prospect_id') {
+                continue;
+            }
+
+            $options = $field['options'] ?? [];
+            $exists = collect($options)->contains(
+                fn ($option) => (string) ($option['value'] ?? '') === (string) $record->prospect_id
+            );
+            if (! $exists) {
+                array_unshift($options, [
+                    'value' => (string) $record->prospect_id,
+                    'label' => (string) $record->prospect->name_event,
+                ]);
+                $fields[$index]['options'] = $options;
+            }
+        }
+
+        return $fields;
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function children(string $key, Model $model): array
+    {
+        return match ($key) {
+            'nota_dinas' => $model instanceof NotaDinas
+                ? $model->details()->with('vendor:id,name')->get()->map(function (NotaDinasDetail $detail) {
+                    return [
+                        'id' => $detail->id,
+                        'title' => $detail->keperluan ?: ($detail->vendor?->name ?: 'Detail'),
+                        'subtitle' => $detail->vendor?->name,
+                        'amount' => (int) $detail->jumlah_transfer,
+                        'status' => $detail->status_invoice,
+                    ];
+                })->values()->all()
+                : [],
+            'piutangs' => $model instanceof Piutang
+                ? $model->pembayaranPiutangs()->latest('id')->get()->map(function (PembayaranPiutang $bayar) {
+                    return [
+                        'id' => $bayar->id,
+                        'title' => $bayar->nomor_pembayaran ?: 'Pembayaran',
+                        'subtitle' => optional($bayar->tanggal_pembayaran)?->toDateString(),
+                        'amount' => (int) $bayar->total_pembayaran,
+                        'status' => $bayar->status,
+                    ];
+                })->values()->all()
+                : [],
+            'fixed_assets' => $model instanceof FixedAsset
+                ? $model->depreciations()->latest('id')->get()->map(function (AssetDepreciation $row) {
+                    return [
+                        'id' => $row->id,
+                        'title' => 'Penyusutan',
+                        'subtitle' => optional($row->depreciation_date)?->toDateString(),
+                        'amount' => (int) $row->depreciation_amount,
+                        'status' => $row->is_adjustment ? 'adjustment' : null,
+                    ];
+                })->values()->all()
+                : [],
+            'bank_statements' => $model instanceof BankStatement
+                ? $model->transactions()->latest('transaction_date')->latest('id')->limit(100)->get()->map(function (BankTransaction $row) {
+                    $debit = (int) $row->debit_amount;
+                    $credit = (int) $row->credit_amount;
+                    $fields = [];
+                    if ($debit > 0) {
+                        $fields[] = ['label' => 'Debit', 'value' => $this->displayValue($debit, 'money')];
+                    }
+                    if ($credit > 0) {
+                        $fields[] = ['label' => 'Kredit', 'value' => $this->displayValue($credit, 'money')];
+                    }
+                    if ($ref = $this->stringValue($row->reference_number)) {
+                        $fields[] = ['label' => 'Referensi', 'value' => $ref];
+                    }
+                    if ($row->balance !== null && $row->balance !== '') {
+                        $fields[] = ['label' => 'Saldo', 'value' => $this->displayValue($row->balance, 'money')];
+                    }
+
+                    return [
+                        'id' => (int) $row->id,
+                        'title' => $this->stringValue($row->description)
+                            ?: ($this->stringValue($row->reference_number) ?: 'Transaksi bank'),
+                        'subtitle' => optional($row->transaction_date)?->format('d M Y'),
+                        'amount' => $credit > 0 ? $credit : $debit,
+                        'status' => $row->is_matched ? 'matched' : 'unmatched',
+                        'fields' => $fields,
+                    ];
+                })->values()->all()
+                : [],
+            'simulasi' => $model instanceof SimulasiProduk
+                ? collect($model->payment_simulation ?? [])->values()->map(function ($term, $index) {
+                    $term = is_array($term) ? $term : [];
+                    $bulan = trim((string) ($term['bulan'] ?? 'Termin'));
+                    $tahun = (string) ($term['tahun'] ?? '');
+
+                    return [
+                        'id' => $index + 1,
+                        'title' => trim($bulan.' '.$tahun) ?: 'Termin',
+                        'subtitle' => isset($term['persen']) ? $term['persen'].'%' : null,
+                        'amount' => (int) ($term['nominal'] ?? 0),
+                    ];
+                })->all()
+                : [],
+            'products' => $model instanceof Product
+                ? $this->productFacilityChildren($model)
+                : [],
+            'documents' => $model instanceof Document
+                ? $this->documentChildren($model)
+                : [],
+            default => [],
+        };
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function documentChildren(Document $model): array
+    {
+        $model->loadMissing([
+            'approvals.user:id,name',
+            'attachments',
+        ]);
+
+        $approvals = $model->approvals->values()->map(function (DocumentApproval $row, int $index) {
+            $userName = $this->stringValue($row->user?->name) ?: 'Approver';
+            $note = $this->stringValue($row->note);
+            $signed = optional($row->signed_at)?->format('d M Y H:i');
+
+            $fields = [
+                ['label' => 'Urutan', 'value' => (string) ($row->step_order ?? ($index + 1))],
+            ];
+            if ($note !== '') {
+                $fields[] = ['label' => 'Catatan', 'value' => $note];
+            }
+            if ($signed) {
+                $fields[] = ['label' => 'Ditandatangani', 'value' => $signed];
+            }
+
+            return [
+                'id' => (int) $row->id,
+                'title' => $userName,
+                'subtitle' => 'Persetujuan',
+                'status' => $this->stringValue($row->status) ?: null,
+                'fields' => $fields,
+            ];
+        })->all();
+
+        $attachments = $model->attachments->values()->map(function (DocumentAttachment $row) {
+            $url = $this->publicStorageUrl($row->file_path);
+            $fields = [];
+            if ($url) {
+                $fields[] = ['label' => 'File', 'value' => $url];
+            }
+            if ($row->file_size) {
+                $fields[] = ['label' => 'Ukuran', 'value' => $this->formatFileSize((int) $row->file_size)];
+            }
+            if ($mime = $this->stringValue($row->mime_type)) {
+                $fields[] = ['label' => 'Tipe', 'value' => $mime];
+            }
+
+            return [
+                'id' => (int) $row->id,
+                'title' => $this->stringValue($row->file_name) ?: 'Lampiran',
+                'subtitle' => 'Lampiran',
+                'status' => null,
+                'fields' => $fields,
+            ];
+        })->all();
+
+        return array_values(array_merge($approvals, $attachments));
+    }
+
+    private function publicStorageUrl(mixed $path): ?string
+    {
+        $value = $this->stringValue($path);
+        if ($value === '') {
+            return null;
+        }
+        if (str_starts_with($value, 'http://') || str_starts_with($value, 'https://')) {
+            return $value;
+        }
+
+        return url(Storage::disk('public')->url(ltrim($value, '/')));
+    }
+
+    private function formatFileSize(int $bytes): string
+    {
+        if ($bytes < 1024) {
+            return $bytes.' B';
+        }
+        if ($bytes < 1024 * 1024) {
+            return round($bytes / 1024, 1).' KB';
+        }
+
+        return round($bytes / (1024 * 1024), 1).' MB';
+    }
+
+    /**
+     * Lengkapi payload detail dokumen (penerima, label status, konten, dll).
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    private function applyDocumentDetail(array &$payload, Document $model): void
+    {
+        $model->loadMissing([
+            'category:id,name,code',
+            'creator:id,name',
+            'recipientsList:id,name',
+            'approvals.user:id,name',
+            'attachments',
+        ]);
+
+        $confidentialityLabels = [
+            'public' => 'Public',
+            'internal' => 'Internal',
+            'confidential' => 'Confidential',
+            'secret' => 'Secret',
+        ];
+        $statusLabels = [
+            'draft' => 'Draft',
+            'pending' => 'Pending',
+            'approved' => 'Approved',
+            'rejected' => 'Rejected',
+            'archived' => 'Archived',
+        ];
+
+        $recipients = $model->recipientsList
+            ->map(fn (User $user) => $this->stringValue($user->name))
+            ->filter(fn (string $name) => $name !== '')
+            ->values()
+            ->all();
+
+        $fields = [
+            ['label' => 'Judul', 'value' => $this->stringValue($model->title) ?: null],
+            ['label' => 'Nomor', 'value' => $this->stringValue($model->document_number) ?: null],
+            ['label' => 'Kategori', 'value' => $this->stringValue($model->category?->name) ?: null],
+            ['label' => 'Kepada', 'value' => $recipients === [] ? null : implode(', ', $recipients)],
+            [
+                'label' => 'Kerahasiaan',
+                'value' => $confidentialityLabels[$this->stringValue($model->confidentiality)]
+                    ?? ($this->stringValue($model->confidentiality) ?: null),
+            ],
+            [
+                'label' => 'Status',
+                'value' => $statusLabels[$this->stringValue($model->status)]
+                    ?? ($this->stringValue($model->status) ?: null),
+            ],
+            ['label' => 'Dibuat oleh', 'value' => $this->stringValue($model->creator?->name) ?: null],
+            ['label' => 'Berlaku mulai', 'value' => $this->displayValue($model->date_effective, 'date')],
+            ['label' => 'Berlaku hingga', 'value' => $this->displayValue($model->date_expired, 'date')],
+            [
+                'label' => 'Tanda tangan digital',
+                'value' => $model->use_digital_signature ? 'Ya' : 'Tidak',
+            ],
+            [
+                'label' => 'Peringatan kerahasiaan',
+                'value' => $model->show_confidentiality_warning ? 'Ya' : 'Tidak',
+            ],
+            ['label' => 'Ringkasan', 'value' => $this->plainText($model->summary)],
+            ['label' => 'Isi dokumen', 'value' => $this->plainText($model->content)],
+        ];
+
+        if (is_array($model->metadata) && $model->metadata !== []) {
+            foreach ($model->metadata as $metaKey => $metaValue) {
+                $label = $this->stringValue($metaKey);
+                $value = is_scalar($metaValue) ? $this->stringValue($metaValue) : null;
+                if ($label !== '' && $value !== null && $value !== '') {
+                    $fields[] = ['label' => $label, 'value' => $value];
+                }
+            }
+        }
+
+        $payload['fields'] = array_values(array_filter(
+            $fields,
+            fn (array $row) => ($row['value'] ?? null) !== null && $row['value'] !== ''
+        ));
+        $payload['children'] = $this->documentChildren($model);
+        $payload['children_title'] = 'Persetujuan & lampiran';
+        $payload['status'] = $statusLabels[$this->stringValue($model->status)]
+            ?? ($this->stringValue($model->status) ?: $payload['status'] ?? null);
+    }
+
+    /**
+     * Lengkapi payload detail rekonsiliasi (saldo, debit/kredit, rekening, label status).
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    private function applyBankStatementDetail(array &$payload, BankStatement $model): void
+    {
+        $model->loadMissing(['paymentMethod:id,name,bank_name,no_rekening']);
+
+        $pm = $model->paymentMethod;
+        $rekeningParts = array_values(array_filter([
+            $this->stringValue($pm?->bank_name),
+            $this->stringValue($pm?->no_rekening),
+            $this->stringValue($pm?->name),
+        ], fn (string $value) => $value !== ''));
+        $rekening = implode(' · ', $rekeningParts);
+
+        $customTitle = $this->stringValue($model->title);
+        if ($customTitle === '' && $rekening !== '') {
+            $start = optional($model->period_start)?->format('d M Y');
+            $end = optional($model->period_end)?->format('d M Y');
+            $period = ($start && $end) ? "{$start} – {$end}" : ($start ?: $end);
+            $payload['title'] = $period ? "{$rekening} · {$period}" : $rekening;
+        }
+
+        if ($rekening !== '') {
+            $payload['subtitle'] = $rekening;
+        }
+
+        $statusLabels = BankStatement::getStatusOptions();
+        $reconLabels = BankStatement::getReconciliationStatusOptions();
+        $sourceLabels = BankStatement::getSourceTypeOptions();
+
+        $fields = [
+            ['label' => 'Judul', 'value' => $customTitle !== '' ? $customTitle : null],
+            ['label' => 'Rekening', 'value' => $rekening !== '' ? $rekening : null],
+            ['label' => 'Cabang', 'value' => $this->stringValue($model->branch) ?: null],
+            ['label' => 'Mulai', 'value' => $this->displayValue($model->period_start, 'date')],
+            ['label' => 'Selesai', 'value' => $this->displayValue($model->period_end, 'date')],
+            ['label' => 'Saldo awal', 'value' => $this->displayValue($model->opening_balance ?? 0, 'money')],
+            ['label' => 'Saldo akhir', 'value' => $this->displayValue($model->closing_balance ?? 0, 'money')],
+            ['label' => 'Total debit', 'value' => $this->displayValue($model->tot_debit ?? 0, 'money')],
+            ['label' => 'Jumlah debit', 'value' => $model->no_of_debit !== null ? ((int) $model->no_of_debit).' transaksi' : null],
+            ['label' => 'Total kredit', 'value' => $this->displayValue($model->tot_credit ?? 0, 'money')],
+            ['label' => 'Jumlah kredit', 'value' => $model->no_of_credit !== null ? ((int) $model->no_of_credit).' transaksi' : null],
+            ['label' => 'Total mutasi', 'value' => $model->total_records !== null ? ((int) $model->total_records).' baris' : null],
+            [
+                'label' => 'Sumber',
+                'value' => $sourceLabels[$this->stringValue($model->source_type)] ?? ($this->stringValue($model->source_type) ?: null),
+            ],
+            ['label' => 'File', 'value' => $this->stringValue($model->original_filename) ?: null],
+            [
+                'label' => 'Status',
+                'value' => $statusLabels[$this->stringValue($model->status)] ?? ($this->stringValue($model->status) ?: null),
+            ],
+            [
+                'label' => 'Status rekonsiliasi',
+                'value' => $reconLabels[$this->stringValue($model->reconciliation_status)] ?? ($this->stringValue($model->reconciliation_status) ?: null),
+            ],
+            ['label' => 'Catatan', 'value' => $this->plainText($model->description)],
+        ];
+
+        $payload['children_title'] = 'Mutasi rekening';
+        $payload['reconciliation'] = $this->serializeBankStatementReconciliation($model);
+
+        $matchPct = data_get($payload, 'reconciliation.statistics.match_percentage');
+        if ($matchPct !== null) {
+            $fields[] = [
+                'label' => 'Persentase cocok',
+                'value' => rtrim(rtrim(number_format((float) $matchPct, 1, ',', ''), '0'), ',').'%',
+            ];
+        }
+
+        $payload['fields'] = array_values(array_filter(
+            $fields,
+            fn (array $row) => filled($row['value'] ?? null)
+        ));
+    }
+
+    /**
+     * Payload perbandingan App ↔ Bank (sama sumber data halaman Filament ViewReconciliation).
+     *
+     * @return array<string, mixed>|null
+     */
+    private function serializeBankStatementReconciliation(BankStatement $model): ?array
+    {
+        if (! $model->payment_method_id || ! $model->period_start || ! $model->period_end) {
+            return null;
+        }
+
+        try {
+            $results = app(ReconciliationService::class)->getStoredMatches(
+                (int) $model->payment_method_id,
+                $model->period_start->format('Y-m-d'),
+                $model->period_end->format('Y-m-d'),
+            );
+        } catch (\Throwable $e) {
+            report($e);
+
+            return null;
+        }
+
+        $matched = collect($results['matched'] ?? [])->values();
+        $unmatchedApp = collect($results['unmatched_app'] ?? [])->values();
+        $unmatchedBank = collect($results['unmatched_bank'] ?? [])->values();
+        $stats = $results['statistics'] ?? [];
+        $limit = 50;
+
+        return [
+            'statistics' => [
+                'total_app_transactions' => (int) ($stats['total_app_transactions'] ?? 0),
+                'total_bank_items' => (int) ($stats['total_bank_items'] ?? 0),
+                'matched_count' => (int) ($stats['matched_count'] ?? 0),
+                'unmatched_app_count' => (int) ($stats['unmatched_app_count'] ?? 0),
+                'unmatched_bank_count' => (int) ($stats['unmatched_bank_count'] ?? 0),
+                'match_percentage' => (float) ($stats['match_percentage'] ?? 0),
+                'total_app_debit' => (int) ($stats['total_app_debit'] ?? 0),
+                'total_app_credit' => (int) ($stats['total_app_credit'] ?? 0),
+                'total_bank_debit' => (int) ($stats['total_bank_debit'] ?? 0),
+                'total_bank_credit' => (int) ($stats['total_bank_credit'] ?? 0),
+            ],
+            'matched' => $matched->take($limit)->map(function ($match) {
+                $match = (array) $match;
+
+                return [
+                    'confidence' => (int) ($match['confidence'] ?? 0),
+                    'match_type' => (string) ($match['match_type'] ?? 'stored'),
+                    'app' => $this->serializeReconciliationAppTx($match['app_transaction'] ?? null),
+                    'bank' => $this->serializeReconciliationBankItem($match['bank_item'] ?? null),
+                ];
+            })->values()->all(),
+            'unmatched_app' => $unmatchedApp->take($limit)->map(
+                fn ($tx) => $this->serializeReconciliationAppTx($tx)
+            )->values()->all(),
+            'unmatched_bank' => $unmatchedBank->take($limit)->map(
+                fn ($item) => $this->serializeReconciliationBankItem($item)
+            )->values()->all(),
+            'truncated' => [
+                'matched' => $matched->count() > $limit,
+                'unmatched_app' => $unmatchedApp->count() > $limit,
+                'unmatched_bank' => $unmatchedBank->count() > $limit,
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function serializeReconciliationAppTx(mixed $tx): ?array
+    {
+        if ($tx === null) {
+            return null;
+        }
+
+        $debit = (int) ($tx->debit_amount ?? 0);
+        $credit = (int) ($tx->credit_amount ?? 0);
+
+        return [
+            'id' => (int) ($tx->source_id ?? 0),
+            'date' => optional($tx->transaction_date ?? null)?->format('Y-m-d'),
+            'description' => $this->stringValue($tx->description ?? '') ?: 'Transaksi aplikasi',
+            'source' => $this->stringValue($tx->source_table ?? $tx->source_type ?? '') ?: null,
+            'debit' => $debit,
+            'credit' => $credit,
+            'amount' => $debit > 0 ? $debit : $credit,
+            'is_debit' => $debit > 0,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function serializeReconciliationBankItem(mixed $item): ?array
+    {
+        if ($item === null) {
+            return null;
+        }
+
+        $debit = (int) ($item->debit ?? 0);
+        $credit = (int) ($item->credit ?? 0);
+
+        return [
+            'id' => (int) ($item->id ?? 0),
+            'date' => optional($item->date ?? null)?->format('Y-m-d'),
+            'description' => $this->stringValue($item->description ?? '') ?: 'Mutasi bank',
+            'debit' => $debit,
+            'credit' => $credit,
+            'amount' => $debit > 0 ? $debit : $credit,
+            'is_debit' => $debit > 0,
+        ];
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function productFacilityChildren(Product $product): array
+    {
+        $product->loadMissing(['items.vendor']);
+
+        return $product->items->map(function ($item) {
+            $qty = max(1, (int) ($item->quantity ?? 1));
+            $hargaPublish = (int) ($item->harga_publish ?? 0);
+            $hargaVendor = (int) ($item->harga_vendor ?? 0);
+            $linePublic = (int) ($item->price_public ?: $hargaPublish * $qty);
+            $lineVendor = (int) ($item->total_price ?: $hargaVendor * $qty);
+            if ($hargaVendor > 0 && $hargaPublish !== $hargaVendor && $lineVendor === $linePublic) {
+                $lineVendor = $hargaVendor * $qty;
+            }
+
+            $fields = [];
+            if ($description = $this->plainText($item->description)) {
+                $fields[] = ['label' => 'Fasilitas', 'value' => $description];
+            }
+            if ($qty > 1) {
+                $fields[] = ['label' => 'Qty', 'value' => (string) $qty];
+            }
+            if ($lineVendor > 0) {
+                $fields[] = ['label' => 'Harga vendor', 'value' => $this->displayValue($lineVendor, 'money')];
+            }
+
+            return [
+                'id' => (int) $item->id,
+                'title' => $item->vendor?->name ?: 'Fasilitas',
+                'subtitle' => $qty > 1 ? $qty.'×' : null,
+                'amount' => $linePublic,
+                'vendor_id' => $item->vendor_id ? (int) $item->vendor_id : null,
+                'fields' => $fields,
+            ];
+        })->values()->all();
+    }
+
+    /**
+     * @param  array<int|string, string>|string  $source
+     * @return list<array{value: string, label: string}>
+     */
+    private function options(array|string $source): array
+    {
+        if (is_array($source) && $this->isAssoc($source)) {
+            $rows = [];
+            foreach ($source as $value => $label) {
+                $rows[] = ['value' => (string) $value, 'label' => (string) $label];
+            }
+
+            return $rows;
+        }
+
+        if (! is_string($source)) {
+            return [];
+        }
+
+        $companyId = UserVisibility::companyId();
+
+        $map = function ($query, string $labelAttr = 'name') {
+            return $query->orderBy($labelAttr)->get(['id', $labelAttr])->map(fn ($row) => [
+                'value' => (string) $row->id,
+                'label' => (string) $row->{$labelAttr},
+            ])->values()->all();
+        };
+
+        return match ($source) {
+            'payment_methods' => $map(PaymentMethod::query(), 'name'),
+            'rekening_koran' => PaymentMethod::query()
+                ->whereNotNull('no_rekening')
+                ->where('no_rekening', '!=', '')
+                ->orderBy('bank_name')
+                ->orderBy('no_rekening')
+                ->get(['id', 'name', 'bank_name', 'no_rekening'])
+                ->map(function (PaymentMethod $row) {
+                    $label = trim(implode(' · ', array_filter([
+                        (string) ($row->bank_name ?? ''),
+                        (string) ($row->no_rekening ?? ''),
+                        (string) ($row->name ?? ''),
+                    ], fn (string $part) => $part !== '')));
+
+                    return [
+                        'value' => (string) $row->id,
+                        'label' => $label !== '' ? $label : ('Rekening #'.$row->id),
+                    ];
+                })
+                ->values()
+                ->all(),
+            'vendors' => $map(Vendor::query(), 'name'),
+            'parent_vendors' => Vendor::query()
+                ->whereNull('parent_id')
+                ->whereIn('status', [
+                    StatusVendor::VENDOR->value,
+                    StatusVendor::MASTER->value,
+                ])
+                ->when($companyId && Schema::hasColumn((new Vendor)->getTable(), 'company_id'), fn ($q) => $q->where('company_id', $companyId))
+                ->orderBy('name')
+                ->get(['id', 'name'])
+                ->map(fn (Vendor $row) => [
+                    'value' => (string) $row->id,
+                    'label' => (string) $row->name,
+                ])
+                ->values()
+                ->all(),
+            'orders' => Order::query()->with('prospect:id,name_event')->latest('id')->limit(100)->get()->map(fn (Order $order) => [
+                'value' => (string) $order->id,
+                'label' => trim(($order->no_kontrak ? $order->no_kontrak.' · ' : '').($order->prospect?->name_event ?: 'Proyek #'.$order->id)),
+            ])->values()->all(),
+            'prospects' => $map(Prospect::query(), 'name_event'),
+            'open_prospects' => Prospect::query()
+                ->where(function ($query) {
+                    $query->whereDoesntHave('orders', function ($orderQuery) {
+                        $orderQuery->whereNotNull('status');
+                    });
+                })
+                ->orderBy('name_event')
+                ->get(['id', 'name_event'])
+                ->map(fn (Prospect $row) => [
+                    'value' => (string) $row->id,
+                    'label' => (string) $row->name_event,
+                ])
+                ->values()
+                ->all(),
+            'products' => $map(Product::query(), 'name'),
+            'account_managers' => $this->accountManagerOptions(),
+            'employees' => $map(Employee::query(), 'name'),
+            'users' => User::query()
+                ->when($companyId, fn ($q) => $q->where('company_id', $companyId))
+                ->orderBy('name')
+                ->get(['id', 'name'])
+                ->map(fn (User $row) => ['value' => (string) $row->id, 'label' => $row->name])
+                ->values()
+                ->all(),
+            'categories' => $map(Category::query(), 'name'),
+            'nota_dinas' => NotaDinas::query()->latest('id')->limit(100)->get(['id', 'no_nd', 'hal'])->map(fn (NotaDinas $row) => [
+                'value' => (string) $row->id,
+                'label' => trim($row->no_nd.' · '.$row->hal),
+            ])->values()->all(),
+            'piutangs' => Piutang::query()->latest('id')->limit(100)->get(['id', 'nomor_piutang', 'nama_debitur'])->map(fn (Piutang $row) => [
+                'value' => (string) $row->id,
+                'label' => trim($row->nomor_piutang.' · '.$row->nama_debitur),
+            ])->values()->all(),
+            'document_categories' => DocumentCategory::query()
+                ->when($companyId, fn ($q) => $q->where('company_id', $companyId))
+                ->orderBy('name')
+                ->get(['id', 'name'])
+                ->map(fn ($row) => ['value' => (string) $row->id, 'label' => (string) $row->name])
+                ->values()
+                ->all(),
+            'sop_categories' => $map(SopCategory::query(), 'name'),
+            'documentation_categories' => $map(DocumentationCategory::query(), 'name'),
+            default => [],
+        };
+    }
+
+    private function isAssoc(array $array): bool
+    {
+        return array_keys($array) !== range(0, count($array) - 1);
+    }
+
+    private function value(Model $model, string $attr): mixed
+    {
+        if (! str_contains($attr, '.')) {
+            return $model->{$attr} ?? null;
+        }
+
+        $current = $model;
+        foreach (explode('.', $attr) as $segment) {
+            if ($current === null) {
+                return null;
+            }
+            $current = $current->{$segment} ?? null;
+        }
+
+        return $current;
+    }
+
+    private function scalar(mixed $value): ?string
+    {
+        if (($enum = $this->enumString($value)) !== null) {
+            return $enum;
+        }
+        if (is_bool($value)) {
+            return $value ? 'aktif' : 'nonaktif';
+        }
+        if ($value === null || $value === '') {
+            return null;
+        }
+        if (is_scalar($value)) {
+            return (string) $value;
+        }
+
+        return null;
+    }
+
+    private function stringValue(mixed $value): string
+    {
+        if ($value instanceof \BackedEnum) {
+            if (is_callable([$value, 'getLabel'])) {
+                $label = $value->getLabel();
+                if (is_string($label) && $label !== '') {
+                    return $label;
+                }
+            }
+
+            return (string) $value->value;
+        }
+        if ($value instanceof \UnitEnum) {
+            return $value->name;
+        }
+        if (is_bool($value)) {
+            return $value ? 'Ya' : 'Tidak';
+        }
+        if ($value === null) {
+            return '';
+        }
+        if (is_scalar($value)) {
+            return trim((string) $value);
+        }
+        if (is_object($value) && method_exists($value, '__toString')) {
+            return trim((string) $value);
+        }
+
+        return '';
+    }
+
+    private function enumString(mixed $value): ?string
+    {
+        if ($value instanceof \BackedEnum) {
+            return (string) $value->value;
+        }
+        if ($value instanceof \UnitEnum) {
+            return $value->name;
+        }
+
+        return null;
+    }
+
+    private function dateValue(Model $model, ?string $attr): ?string
+    {
+        if (! $attr) {
+            return optional($model->created_at)?->toDateString();
+        }
+
+        $value = $this->value($model, $attr);
+        if ($value instanceof \DateTimeInterface) {
+            return $value->format('Y-m-d');
+        }
+        if ($value === null || $value === '') {
+            return null;
+        }
+        if (is_scalar($value)) {
+            return (string) $value;
+        }
+
+        return $this->enumString($value);
+    }
+
+    private function displayValue(mixed $value, ?string $format): ?string
+    {
+        if ($format === 'money') {
+            return 'Rp '.number_format((int) $value, 0, ',', '.');
+        }
+        if ($format === 'date' && $value instanceof \DateTimeInterface) {
+            return $value->format('d M Y');
+        }
+        if ($value instanceof \DateTimeInterface) {
+            return $value->format('d M Y');
+        }
+        $text = $this->stringValue($value);
+        if ($format === 'html' || $this->looksLikeHtml($text)) {
+            $text = $this->plainText($text) ?? '';
+        }
+
+        return $text !== '' ? $text : null;
+    }
+
+    private function looksLikeHtml(string $text): bool
+    {
+        return (bool) preg_match('/<\/?[a-z][\s\S]*>/i', $text);
+    }
+
+    private function plainText(?string $html): ?string
+    {
+        if ($html === null || trim($html) === '') {
+            return null;
+        }
+
+        $text = $html;
+
+        // Preserve ordered lists as "1. …" / "2. …"
+        $text = preg_replace_callback(
+            '/<ol\b([^>]*)>(.*?)<\/ol>/is',
+            function (array $match): string {
+                $attrs = $match[1] ?? '';
+                $start = 1;
+                if (preg_match('/\bstart\s*=\s*["\']?(\d+)/i', $attrs, $startMatch)) {
+                    $start = max(1, (int) $startMatch[1]);
+                }
+
+                preg_match_all('/<li\b[^>]*>(.*?)<\/li>/is', $match[2] ?? '', $items);
+                $lines = [];
+                $n = $start;
+                foreach ($items[1] ?? [] as $itemHtml) {
+                    $item = $this->plainTextFragment((string) $itemHtml);
+                    if ($item !== '') {
+                        $lines[] = $n.'. '.$item;
+                        $n++;
+                    }
+                }
+
+                return $lines === [] ? '' : "\n".implode("\n", $lines)."\n";
+            },
+            $text
+        ) ?? $text;
+
+        // Preserve unordered lists as "• …"
+        $text = preg_replace_callback(
+            '/<ul\b[^>]*>(.*?)<\/ul>/is',
+            function (array $match): string {
+                preg_match_all('/<li\b[^>]*>(.*?)<\/li>/is', $match[1] ?? '', $items);
+                $lines = [];
+                foreach ($items[1] ?? [] as $itemHtml) {
+                    $item = $this->plainTextFragment((string) $itemHtml);
+                    if ($item !== '') {
+                        $lines[] = '• '.$item;
+                    }
+                }
+
+                return $lines === [] ? '' : "\n".implode("\n", $lines)."\n";
+            },
+            $text
+        ) ?? $text;
+
+        $text = $this->plainTextFragment($text);
+        $text = preg_replace("/\n{3,}/", "\n\n", $text) ?? $text;
+        $text = trim($text);
+
+        return $text === '' ? null : $text;
+    }
+
+    private function plainTextFragment(string $html): string
+    {
+        $text = preg_replace('/<\s*br\s*\/?\s*>/i', "\n", $html) ?? $html;
+        $text = preg_replace('/<\/(p|div|h[1-6]|tr)>/i', "\n", $text) ?? $text;
+        $text = html_entity_decode(strip_tags($text), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = preg_replace("/[ \t]+/u", ' ', $text) ?? $text;
+        $text = preg_replace("/ *\n */u", "\n", $text) ?? $text;
+
+        return trim($text);
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    private function definitions(): array
+    {
+        return [
+            'products' => [
+                'model' => Product::class,
+                'feature' => PricingPlans::FEATURE_PROJECTS,
+                'quota' => CompanySubscription::RESOURCE_PRODUCTS,
+                'title' => 'Paket',
+                'subtitle' => 'Katalog paket wedding',
+                'icon' => 'shippingbox.fill',
+                'group' => 'penjualan',
+                'group_label' => 'Penjualan',
+                'title_attr' => 'name',
+                'subtitle_attr' => 'category.name',
+                'amount_attr' => 'price',
+                'status_attr' => 'is_active',
+                'search' => ['name', 'slug'],
+                'with' => [
+                    'category:id,name',
+                    'parent:id,name',
+                    'items',
+                    'pengurangans',
+                    'penambahanHarga',
+                ],
+                'detail_with' => [
+                    'category:id,name',
+                    'parent:id,name',
+                    'items.vendor.category:id,name',
+                    'pengurangans',
+                    'penambahanHarga.vendor.category:id,name',
+                ],
+                'fields' => [
+                    ['name' => 'name', 'label' => 'Nama paket', 'type' => 'text', 'required' => true, 'section' => 'Informasi dasar', 'placeholder' => 'nama_lokasi_pax'],
+                    ['name' => 'category_id', 'label' => 'Kategori', 'type' => 'select', 'options' => 'categories', 'cast' => 'int', 'required' => true, 'section' => 'Informasi dasar'],
+                    ['name' => 'parent_id', 'label' => 'Paket induk', 'type' => 'select', 'options' => 'products', 'cast' => 'int', 'section' => 'Informasi dasar', 'helper' => 'Opsional jika paket ini adalah varian (child).'],
+                    ['name' => 'pax', 'label' => 'Resepsi (pax)', 'type' => 'number', 'cast' => 'int', 'required' => true, 'section' => 'Kapasitas', 'placeholder' => '1000'],
+                    ['name' => 'pax_akad', 'label' => 'Akad (pax)', 'type' => 'number', 'cast' => 'int', 'section' => 'Kapasitas', 'placeholder' => '100'],
+                    ['name' => 'stock', 'label' => 'Stok', 'type' => 'number', 'cast' => 'int', 'required' => true, 'section' => 'Kapasitas', 'helper' => 'Biasanya diisi 10.', 'placeholder' => '10'],
+                    ['name' => 'product_price', 'label' => 'Total harga publish', 'type' => 'number', 'cast' => 'int', 'section' => 'Harga', 'readonly' => true, 'helper' => 'Otomatis dari fasilitas vendor.'],
+                    ['name' => 'pengurangan', 'label' => 'Total pengurangan', 'type' => 'number', 'cast' => 'int', 'section' => 'Harga', 'readonly' => true, 'helper' => 'Otomatis dari daftar pengurangan.'],
+                    ['name' => 'penambahan_publish', 'label' => 'Penambahan publish', 'type' => 'number', 'cast' => 'int', 'section' => 'Harga', 'readonly' => true, 'helper' => 'Otomatis dari penambahan harga.'],
+                    ['name' => 'penambahan_vendor', 'label' => 'Penambahan vendor', 'type' => 'number', 'cast' => 'int', 'section' => 'Harga', 'readonly' => true],
+                    ['name' => 'price', 'label' => 'Harga jual / Total paket', 'type' => 'number', 'cast' => 'int', 'section' => 'Harga', 'readonly' => true, 'helper' => 'publish − pengurangan + penambahan publish.'],
+                    ['name' => 'description', 'label' => 'Deskripsi', 'type' => 'textarea', 'section' => 'Detail'],
+                    ['name' => 'free_pengurangan', 'label' => 'Keterangan free / pengurangan', 'type' => 'textarea', 'section' => 'Detail', 'helper' => 'Catatan free atau keterangan pengurangan.'],
+                    ['name' => 'is_active', 'label' => 'Aktif', 'type' => 'toggle', 'section' => 'Status', 'helper' => 'Nonaktifkan untuk menyembunyikan paket.'],
+                ],
+                'detail' => [
+                    ['label' => 'Nama', 'attr' => 'name'],
+                    ['label' => 'Kategori', 'attr' => 'category.name'],
+                    ['label' => 'Paket induk', 'attr' => 'parent.name'],
+                    ['label' => 'Harga', 'attr' => 'price', 'format' => 'money'],
+                    ['label' => 'Total publish', 'attr' => 'product_price', 'format' => 'money'],
+                    ['label' => 'Pengurangan', 'attr' => 'pengurangan', 'format' => 'money'],
+                    ['label' => 'Penambahan publish', 'attr' => 'penambahan_publish', 'format' => 'money'],
+                    ['label' => 'Penambahan vendor', 'attr' => 'penambahan_vendor', 'format' => 'money'],
+                    ['label' => 'Resepsi (pax)', 'attr' => 'pax'],
+                    ['label' => 'Akad (pax)', 'attr' => 'pax_akad'],
+                    ['label' => 'Stok', 'attr' => 'stock'],
+                    ['label' => 'Status', 'attr' => 'is_active'],
+                    ['label' => 'Deskripsi', 'attr' => 'description'],
+                    ['label' => 'Free / pengurangan', 'attr' => 'free_pengurangan'],
+                ],
+            ],
+            'vendors' => [
+                'model' => Vendor::class,
+                'feature' => PricingPlans::FEATURE_PROJECTS,
+                'quota' => CompanySubscription::RESOURCE_VENDORS,
+                'title' => 'Vendor',
+                'subtitle' => 'Mitra dan supplier',
+                'icon' => 'storefront.fill',
+                'group' => 'penjualan',
+                'group_label' => 'Penjualan',
+                'title_attr' => 'name',
+                'subtitle_attr' => 'pic_name',
+                'amount_attr' => 'harga_publish',
+                'status_attr' => 'status',
+                'search' => ['name', 'pic_name', 'phone'],
+                'with' => ['category:id,name', 'parent:id,name'],
+                'detail_with' => ['category:id,name', 'parent:id,name', 'priceHistories'],
+                'fields' => [
+                    ['name' => 'name', 'label' => 'Nama vendor', 'type' => 'text', 'required' => true, 'section' => 'Informasi dasar'],
+                    ['name' => 'phone', 'label' => 'Telepon', 'type' => 'text', 'required' => true, 'section' => 'Informasi dasar', 'placeholder' => '812XXXXXXXX', 'helper' => 'Nomor tanpa angka 0 di depan (+62).'],
+                    ['name' => 'address', 'label' => 'Alamat', 'type' => 'text', 'section' => 'Informasi dasar'],
+                    ['name' => 'pic_name', 'label' => 'Nama PIC', 'type' => 'text', 'section' => 'Informasi dasar'],
+                    ['name' => 'status', 'label' => 'Status', 'type' => 'select', 'required' => true, 'section' => 'Informasi dasar', 'options' => [
+                        'vendor' => 'Vendor',
+                        'product' => 'Product',
+                        'master' => 'Master',
+                    ]],
+                    ['name' => 'parent_id', 'label' => 'Vendor induk', 'type' => 'select', 'options' => 'parent_vendors', 'cast' => 'int', 'section' => 'Informasi dasar', 'helper' => 'Kosongkan jika ini vendor induk. Muncul untuk status Product.'],
+                    ['name' => 'category_id', 'label' => 'Kategori', 'type' => 'select', 'options' => 'categories', 'cast' => 'int', 'required' => true, 'section' => 'Informasi dasar'],
+                    ['name' => 'is_master', 'label' => 'Master', 'type' => 'toggle', 'section' => 'Informasi dasar', 'helper' => 'Tandai sebagai data master (bisa punya periode harga).'],
+                    ['name' => 'is_published', 'label' => 'Published', 'type' => 'toggle', 'section' => 'Informasi dasar'],
+                    ['name' => 'description', 'label' => 'Deskripsi', 'type' => 'textarea', 'section' => 'Informasi dasar'],
+                    ['name' => 'harga_publish', 'label' => 'Harga publish', 'type' => 'number', 'cast' => 'int', 'section' => 'Keuangan'],
+                    ['name' => 'harga_vendor', 'label' => 'Harga vendor', 'type' => 'number', 'cast' => 'int', 'section' => 'Keuangan'],
+                    ['name' => 'profit_amount', 'label' => 'Profit', 'type' => 'number', 'cast' => 'int', 'section' => 'Keuangan', 'readonly' => true, 'helper' => 'Otomatis: publish − vendor.'],
+                    ['name' => 'profit_margin', 'label' => 'Profit margin (%)', 'type' => 'number', 'cast' => 'int', 'section' => 'Keuangan', 'readonly' => true, 'helper' => 'Otomatis dari profit / publish.'],
+                    ['name' => 'stock', 'label' => 'Stok', 'type' => 'number', 'cast' => 'int', 'section' => 'Keuangan', 'placeholder' => '10'],
+                    ['name' => 'bank_name', 'label' => 'Nama bank', 'type' => 'text', 'section' => 'Rekening'],
+                    ['name' => 'bank_account', 'label' => 'Nomor rekening', 'type' => 'text', 'section' => 'Rekening'],
+                    ['name' => 'account_holder', 'label' => 'Nama pemilik rekening', 'type' => 'text', 'section' => 'Rekening'],
+                ],
+                'detail' => [
+                    ['label' => 'Nama', 'attr' => 'name'],
+                    ['label' => 'PIC', 'attr' => 'pic_name'],
+                    ['label' => 'Telepon', 'attr' => 'phone'],
+                    ['label' => 'Alamat', 'attr' => 'address'],
+                    ['label' => 'Status', 'attr' => 'status'],
+                    ['label' => 'Vendor induk', 'attr' => 'parent.name'],
+                    ['label' => 'Kategori', 'attr' => 'category.name'],
+                    ['label' => 'Harga publish', 'attr' => 'harga_publish', 'format' => 'money'],
+                    ['label' => 'Harga vendor', 'attr' => 'harga_vendor', 'format' => 'money'],
+                    ['label' => 'Profit', 'attr' => 'profit_amount', 'format' => 'money'],
+                    ['label' => 'Stok', 'attr' => 'stock'],
+                    ['label' => 'Bank', 'attr' => 'bank_name'],
+                    ['label' => 'Rekening', 'attr' => 'bank_account'],
+                    ['label' => 'Pemilik rekening', 'attr' => 'account_holder'],
+                    ['label' => 'Deskripsi', 'attr' => 'description'],
+                ],
+            ],
+            'categories' => [
+                'model' => Category::class,
+                'feature' => PricingPlans::FEATURE_PROJECTS,
+                'quota' => CompanySubscription::RESOURCE_CATEGORIES,
+                'title' => 'Kategori',
+                'subtitle' => 'Kategori paket dan vendor',
+                'icon' => 'square.grid.2x2.fill',
+                'group' => 'penjualan',
+                'group_label' => 'Penjualan',
+                'company_scope' => true,
+                'title_attr' => 'name',
+                'subtitle_attr' => 'description',
+                'status_attr' => 'is_active',
+                'search' => ['name'],
+                'fields' => [
+                    ['name' => 'name', 'label' => 'Nama kategori', 'type' => 'text', 'required' => true],
+                    ['name' => 'description', 'label' => 'Deskripsi', 'type' => 'textarea'],
+                ],
+                'detail' => [
+                    ['label' => 'Nama', 'attr' => 'name'],
+                    ['label' => 'Deskripsi', 'attr' => 'description'],
+                ],
+            ],
+            'nota_dinas' => [
+                'model' => NotaDinas::class,
+                'feature' => PricingPlans::FEATURE_NOTA_DINAS,
+                'title' => 'Nota Dinas',
+                'subtitle' => 'Tracking pengeluaran',
+                'icon' => 'doc.text.fill',
+                'group' => 'penjualan',
+                'group_label' => 'Penjualan',
+                'title_attr' => 'no_nd',
+                'subtitle_attr' => 'hal',
+                'date_attr' => 'tanggal',
+                'status_attr' => 'status',
+                'search' => ['no_nd', 'hal'],
+                'with' => ['pengirim:id,name'],
+                'detail_with' => ['details.vendor:id,name'],
+                'fields' => [
+                    ['name' => 'kategori_nd', 'label' => 'Kategori', 'type' => 'select', 'required' => true, 'options' => ['BIS' => 'Bisnis', 'OPS' => 'Operasional', 'LAIN' => 'Lain-lain'], 'in' => ['BIS', 'OPS', 'LAIN']],
+                    ['name' => 'tanggal', 'label' => 'Tanggal', 'type' => 'date', 'required' => true],
+                    ['name' => 'hal', 'label' => 'Hal / perihal', 'type' => 'text', 'required' => true],
+                    ['name' => 'sifat', 'label' => 'Sifat', 'type' => 'select', 'options' => ['biasa' => 'Biasa', 'segera' => 'Segera', 'rahasia' => 'Rahasia'], 'in' => ['biasa', 'segera', 'rahasia']],
+                    ['name' => 'catatan', 'label' => 'Catatan', 'type' => 'textarea'],
+                ],
+                'detail' => [
+                    ['label' => 'Nomor', 'attr' => 'no_nd'],
+                    ['label' => 'Perihal', 'attr' => 'hal'],
+                    ['label' => 'Kategori', 'attr' => 'kategori_nd'],
+                    ['label' => 'Tanggal', 'attr' => 'tanggal', 'format' => 'date'],
+                    ['label' => 'Status', 'attr' => 'status'],
+                    ['label' => 'Pengirim', 'attr' => 'pengirim.name'],
+                    ['label' => 'Catatan', 'attr' => 'catatan'],
+                ],
+            ],
+            'nota_dinas_details' => [
+                'model' => NotaDinasDetail::class,
+                'feature' => PricingPlans::FEATURE_NOTA_DINAS,
+                'title' => 'Detail Nota Dinas',
+                'subtitle' => 'Item transfer nota dinas',
+                'icon' => 'list.bullet.rectangle.fill',
+                'group' => 'penjualan',
+                'group_label' => 'Penjualan',
+                'title_attr' => 'keperluan',
+                'subtitle_attr' => 'vendor.name',
+                'amount_attr' => 'jumlah_transfer',
+                'status_attr' => 'status_invoice',
+                'search' => ['keperluan', 'invoice_number'],
+                'with' => ['vendor:id,name', 'notaDinas:id,no_nd,hal'],
+                'fields' => [
+                    ['name' => 'nota_dinas_id', 'label' => 'Nota dinas', 'type' => 'select', 'required' => true, 'options' => 'nota_dinas', 'cast' => 'int'],
+                    ['name' => 'vendor_id', 'label' => 'Vendor', 'type' => 'select', 'options' => 'vendors', 'cast' => 'int'],
+                    ['name' => 'keperluan', 'label' => 'Keperluan', 'type' => 'text', 'required' => true],
+                    ['name' => 'jumlah_transfer', 'label' => 'Jumlah transfer', 'type' => 'number', 'required' => true, 'cast' => 'int'],
+                    ['name' => 'jenis_pengeluaran', 'label' => 'Jenis', 'type' => 'select', 'options' => ['lain' => 'Lain-lain', 'operasional' => 'Operasional', 'wedding' => 'Wedding'], 'in' => ['lain', 'operasional', 'wedding']],
+                    ['name' => 'bank_name', 'label' => 'Bank', 'type' => 'text'],
+                    ['name' => 'bank_account', 'label' => 'Nomor rekening', 'type' => 'text'],
+                    ['name' => 'account_holder', 'label' => 'Nama rekening', 'type' => 'text'],
+                ],
+                'detail' => [
+                    ['label' => 'Nota dinas', 'attr' => 'notaDinas.no_nd'],
+                    ['label' => 'Vendor', 'attr' => 'vendor.name'],
+                    ['label' => 'Keperluan', 'attr' => 'keperluan'],
+                    ['label' => 'Jumlah', 'attr' => 'jumlah_transfer', 'format' => 'money'],
+                    ['label' => 'Jenis', 'attr' => 'jenis_pengeluaran'],
+                    ['label' => 'Status invoice', 'attr' => 'status_invoice'],
+                ],
+            ],
+            'simulasi' => [
+                'model' => SimulasiProduk::class,
+                'feature' => PricingPlans::FEATURE_SIMULASI,
+                'quota' => CompanySubscription::RESOURCE_SIMULASI,
+                'plan_badge' => 'Pro',
+                'title' => 'Simulasi',
+                'subtitle' => 'Paket penawaran untuk calon klien',
+                'icon' => 'doc.badge.plus',
+                'group' => 'penjualan',
+                'group_label' => 'Penjualan',
+                'title_attr' => 'prospect.name_event',
+                'subtitle_attr' => 'product.name',
+                'amount_attr' => 'grand_total',
+                'search' => ['customer_name', 'notes', 'contract_number'],
+                'with' => ['prospect:id,name_event', 'product:id,name', 'user:id,name'],
+                'fields' => [
+                    ['name' => 'product_id', 'label' => 'Paket dasar', 'type' => 'select', 'required' => true, 'options' => 'products', 'cast' => 'int', 'section' => 'Paket & harga', 'helper' => 'Harga otomatis mengikuti paket yang dipilih.'],
+                    ['name' => 'user_id', 'label' => 'Account Manager', 'type' => 'select', 'required' => true, 'options' => 'account_managers', 'cast' => 'int', 'section' => 'Paket & harga'],
+                    ['name' => 'prospect_id', 'label' => 'Prospek', 'type' => 'select', 'required' => true, 'options' => 'open_prospects', 'cast' => 'int', 'section' => 'Detail simulasi', 'helper' => 'Hanya prospek yang belum punya proyek.'],
+                    ['name' => 'contract_number', 'label' => 'Nomor kontrak / surat', 'type' => 'text', 'section' => 'Detail simulasi', 'helper' => 'Kosongkan untuk penomoran otomatis.'],
+                    ['name' => 'name_ttd', 'label' => 'Nama TTD', 'type' => 'text', 'section' => 'Detail simulasi'],
+                    ['name' => 'title_ttd', 'label' => 'Jabatan TTD', 'type' => 'text', 'section' => 'Detail simulasi'],
+                    ['name' => 'notes', 'label' => 'Catatan', 'type' => 'textarea', 'section' => 'Detail simulasi'],
+                    ['name' => 'payment_dp_amount', 'label' => 'Down Payment (DP)', 'type' => 'number', 'cast' => 'int', 'section' => 'Pola pembayaran'],
+                ],
+                'detail' => [
+                    ['label' => 'Prospek', 'attr' => 'prospect.name_event'],
+                    ['label' => 'Paket', 'attr' => 'product.name'],
+                    ['label' => 'Account Manager', 'attr' => 'user.name'],
+                    ['label' => 'Harga paket', 'attr' => 'total_price', 'format' => 'money'],
+                    ['label' => 'Penambahan', 'attr' => 'penambahan', 'format' => 'money'],
+                    ['label' => 'Pengurangan', 'attr' => 'pengurangan', 'format' => 'money'],
+                    ['label' => 'Grand total', 'attr' => 'grand_total', 'format' => 'money'],
+                    ['label' => 'Down Payment', 'attr' => 'payment_dp_amount', 'format' => 'money'],
+                    ['label' => 'Nomor kontrak', 'attr' => 'contract_number'],
+                    ['label' => 'Nama TTD', 'attr' => 'name_ttd'],
+                    ['label' => 'Jabatan TTD', 'attr' => 'title_ttd'],
+                    ['label' => 'Catatan', 'attr' => 'notes', 'format' => 'html'],
+                ],
+            ],
+            'payment_methods' => [
+                'model' => PaymentMethod::class,
+                'feature' => PricingPlans::FEATURE_BASIC_FINANCE,
+                'quota' => CompanySubscription::RESOURCE_PAYMENT_METHODS,
+                'title' => 'Rekening',
+                'subtitle' => 'Kas dan bank',
+                'icon' => 'creditcard.fill',
+                'group' => 'keuangan',
+                'group_label' => 'Keuangan',
+                'company_scope' => true,
+                'title_attr' => 'name',
+                'subtitle_attr' => 'bank_name',
+                'amount_attr' => 'opening_balance',
+                'search' => ['name', 'bank_name', 'no_rekening'],
+                'fields' => [
+                    ['name' => 'name', 'label' => 'Nama rekening', 'type' => 'text', 'required' => true],
+                    ['name' => 'bank_name', 'label' => 'Bank', 'type' => 'text'],
+                    ['name' => 'no_rekening', 'label' => 'Nomor rekening', 'type' => 'text'],
+                    ['name' => 'cabang', 'label' => 'Cabang', 'type' => 'text'],
+                    ['name' => 'is_cash', 'label' => 'Kas tunai', 'type' => 'toggle', 'cast' => 'bool'],
+                    ['name' => 'opening_balance', 'label' => 'Saldo awal', 'type' => 'number', 'cast' => 'int'],
+                    ['name' => 'opening_balance_date', 'label' => 'Tanggal saldo awal', 'type' => 'date'],
+                ],
+                'detail' => [
+                    ['label' => 'Nama', 'attr' => 'name'],
+                    ['label' => 'Bank', 'attr' => 'bank_name'],
+                    ['label' => 'Nomor rekening', 'attr' => 'no_rekening'],
+                    ['label' => 'Cabang', 'attr' => 'cabang'],
+                    ['label' => 'Kas tunai', 'attr' => 'is_cash'],
+                    ['label' => 'Saldo awal', 'attr' => 'opening_balance', 'format' => 'money'],
+                ],
+            ],
+            'piutangs' => [
+                'model' => Piutang::class,
+                'feature' => PricingPlans::FEATURE_BASIC_FINANCE,
+                'quota' => CompanySubscription::RESOURCE_PIUTANGS,
+                'title' => 'Piutang',
+                'subtitle' => 'Tagihan di luar proyek',
+                'icon' => 'clock.arrow.circlepath',
+                'group' => 'keuangan',
+                'group_label' => 'Keuangan',
+                'title_attr' => 'nama_debitur',
+                'subtitle_attr' => 'nomor_piutang',
+                'amount_attr' => 'sisa_piutang',
+                'date_attr' => 'tanggal_jatuh_tempo',
+                'status_attr' => 'status',
+                'search' => ['nama_debitur', 'nomor_piutang'],
+                'detail_with' => ['pembayaranPiutangs'],
+                'fields' => [
+                    ['name' => 'nama_debitur', 'label' => 'Nama debitur', 'type' => 'text', 'required' => true],
+                    ['name' => 'kontak_debitur', 'label' => 'Kontak', 'type' => 'text'],
+                    ['name' => 'jenis_piutang', 'label' => 'Jenis', 'type' => 'select', 'options' => ['bisnis' => 'Bisnis', 'operasional' => 'Operasional', 'pribadi' => 'Pribadi'], 'in' => ['bisnis', 'operasional', 'pribadi']],
+                    ['name' => 'jumlah_pokok', 'label' => 'Jumlah pokok', 'type' => 'number', 'required' => true, 'cast' => 'int'],
+                    ['name' => 'persentase_bunga', 'label' => 'Bunga (%)', 'type' => 'number', 'cast' => 'int'],
+                    ['name' => 'tanggal_piutang', 'label' => 'Tanggal piutang', 'type' => 'date', 'required' => true],
+                    ['name' => 'tanggal_jatuh_tempo', 'label' => 'Jatuh tempo', 'type' => 'date'],
+                    ['name' => 'keterangan', 'label' => 'Keterangan', 'type' => 'textarea'],
+                ],
+                'detail' => [
+                    ['label' => 'Nomor', 'attr' => 'nomor_piutang'],
+                    ['label' => 'Debitur', 'attr' => 'nama_debitur'],
+                    ['label' => 'Kontak', 'attr' => 'kontak_debitur'],
+                    ['label' => 'Pokok', 'attr' => 'jumlah_pokok', 'format' => 'money'],
+                    ['label' => 'Total', 'attr' => 'total_piutang', 'format' => 'money'],
+                    ['label' => 'Sudah dibayar', 'attr' => 'sudah_dibayar', 'format' => 'money'],
+                    ['label' => 'Sisa', 'attr' => 'sisa_piutang', 'format' => 'money'],
+                    ['label' => 'Status', 'attr' => 'status'],
+                ],
+            ],
+            'pembayaran_piutangs' => [
+                'model' => PembayaranPiutang::class,
+                'feature' => PricingPlans::FEATURE_BASIC_FINANCE,
+                'quota' => CompanySubscription::RESOURCE_PEMBAYARAN_PIUTANGS,
+                'title' => 'Bayar Piutang',
+                'subtitle' => 'Penerimaan cicilan piutang',
+                'icon' => 'checkmark.circle.fill',
+                'group' => 'keuangan',
+                'group_label' => 'Keuangan',
+                'title_attr' => 'nomor_pembayaran',
+                'subtitle_attr' => 'piutang.nama_debitur',
+                'amount_attr' => 'total_pembayaran',
+                'date_attr' => 'tanggal_pembayaran',
+                'search' => ['nomor_pembayaran', 'nomor_referensi'],
+                'with' => ['piutang:id,nama_debitur,nomor_piutang'],
+                'fields' => [
+                    ['name' => 'piutang_id', 'label' => 'Piutang', 'type' => 'select', 'required' => true, 'options' => 'piutangs', 'cast' => 'int'],
+                    ['name' => 'jumlah_pembayaran', 'label' => 'Jumlah', 'type' => 'number', 'required' => true, 'cast' => 'int'],
+                    ['name' => 'payment_method_id', 'label' => 'Rekening', 'type' => 'select', 'required' => true, 'options' => 'payment_methods', 'cast' => 'int'],
+                    ['name' => 'tanggal_pembayaran', 'label' => 'Tanggal bayar', 'type' => 'date', 'required' => true],
+                    ['name' => 'catatan', 'label' => 'Catatan', 'type' => 'textarea'],
+                ],
+                'detail' => [
+                    ['label' => 'Nomor', 'attr' => 'nomor_pembayaran'],
+                    ['label' => 'Piutang', 'attr' => 'piutang.nomor_piutang'],
+                    ['label' => 'Jumlah', 'attr' => 'jumlah_pembayaran', 'format' => 'money'],
+                    ['label' => 'Tanggal', 'attr' => 'tanggal_pembayaran', 'format' => 'date'],
+                ],
+            ],
+            'expenses' => [
+                'model' => Expense::class,
+                'feature' => PricingPlans::FEATURE_BASIC_FINANCE,
+                'quota' => CompanySubscription::RESOURCE_EXPENSES,
+                'title' => 'Pengeluaran Wedding',
+                'subtitle' => 'Biaya vendor per proyek',
+                'icon' => 'arrow.up.right.circle.fill',
+                'group' => 'keuangan',
+                'group_label' => 'Keuangan',
+                'title_attr' => 'note',
+                'subtitle_attr' => 'vendor.name',
+                'amount_attr' => 'amount',
+                'date_attr' => 'date_expense',
+                'search' => ['note', 'no_nd'],
+                'with' => ['vendor:id,name', 'order:id,no_kontrak'],
+                'fields' => [
+                    ['name' => 'order_id', 'label' => 'Proyek', 'type' => 'select', 'required' => true, 'options' => 'orders', 'cast' => 'int'],
+                    ['name' => 'vendor_id', 'label' => 'Vendor', 'type' => 'select', 'options' => 'vendors', 'cast' => 'int'],
+                    ['name' => 'payment_method_id', 'label' => 'Rekening', 'type' => 'select', 'required' => true, 'options' => 'payment_methods', 'cast' => 'int'],
+                    ['name' => 'amount', 'label' => 'Nominal', 'type' => 'number', 'required' => true, 'cast' => 'int'],
+                    ['name' => 'date_expense', 'label' => 'Tanggal', 'type' => 'date', 'required' => true],
+                    ['name' => 'note', 'label' => 'Catatan', 'type' => 'textarea'],
+                ],
+                'detail' => [
+                    ['label' => 'Proyek', 'attr' => 'order.no_kontrak'],
+                    ['label' => 'Vendor', 'attr' => 'vendor.name'],
+                    ['label' => 'Nominal', 'attr' => 'amount', 'format' => 'money'],
+                    ['label' => 'Tanggal', 'attr' => 'date_expense', 'format' => 'date'],
+                    ['label' => 'Catatan', 'attr' => 'note'],
+                ],
+            ],
+            'expense_ops' => [
+                'model' => ExpenseOps::class,
+                'feature' => PricingPlans::FEATURE_BASIC_FINANCE,
+                'quota' => CompanySubscription::RESOURCE_EXPENSE_OPS,
+                'title' => 'Pengeluaran Operasional',
+                'subtitle' => 'Biaya operasional WO',
+                'icon' => 'briefcase.fill',
+                'group' => 'keuangan',
+                'group_label' => 'Keuangan',
+                'title_attr' => 'name',
+                'amount_attr' => 'amount',
+                'date_attr' => 'date_expense',
+                'search' => ['name', 'note'],
+                'with' => ['paymentMethod:id,name'],
+                'fields' => [
+                    ['name' => 'name', 'label' => 'Nama pengeluaran', 'type' => 'text', 'required' => true],
+                    ['name' => 'payment_method_id', 'label' => 'Rekening', 'type' => 'select', 'required' => true, 'options' => 'payment_methods', 'cast' => 'int'],
+                    ['name' => 'amount', 'label' => 'Nominal', 'type' => 'number', 'required' => true, 'cast' => 'int'],
+                    ['name' => 'date_expense', 'label' => 'Tanggal', 'type' => 'date', 'required' => true],
+                    ['name' => 'note', 'label' => 'Catatan', 'type' => 'textarea'],
+                ],
+                'detail' => [
+                    ['label' => 'Nama', 'attr' => 'name'],
+                    ['label' => 'Nominal', 'attr' => 'amount', 'format' => 'money'],
+                    ['label' => 'Tanggal', 'attr' => 'date_expense', 'format' => 'date'],
+                    ['label' => 'Catatan', 'attr' => 'note'],
+                ],
+            ],
+            'pendapatan_lains' => [
+                'model' => PendapatanLain::class,
+                'feature' => PricingPlans::FEATURE_BASIC_FINANCE,
+                'quota' => CompanySubscription::RESOURCE_PENDAPATAN_LAINS,
+                'title' => 'Pendapatan Lain',
+                'subtitle' => 'Pemasukan di luar proyek',
+                'icon' => 'arrow.down.left.circle.fill',
+                'group' => 'keuangan',
+                'group_label' => 'Keuangan',
+                'title_attr' => 'name',
+                'amount_attr' => 'nominal',
+                'date_attr' => 'tgl_bayar',
+                'search' => ['name', 'keterangan'],
+                'fields' => [
+                    ['name' => 'name', 'label' => 'Nama pendapatan', 'type' => 'text', 'required' => true],
+                    ['name' => 'payment_method_id', 'label' => 'Rekening', 'type' => 'select', 'required' => true, 'options' => 'payment_methods', 'cast' => 'int'],
+                    ['name' => 'nominal', 'label' => 'Nominal', 'type' => 'number', 'required' => true, 'cast' => 'int'],
+                    ['name' => 'tgl_bayar', 'label' => 'Tanggal', 'type' => 'date', 'required' => true],
+                    ['name' => 'keterangan', 'label' => 'Keterangan', 'type' => 'textarea'],
+                ],
+                'detail' => [
+                    ['label' => 'Nama', 'attr' => 'name'],
+                    ['label' => 'Nominal', 'attr' => 'nominal', 'format' => 'money'],
+                    ['label' => 'Tanggal', 'attr' => 'tgl_bayar', 'format' => 'date'],
+                    ['label' => 'Keterangan', 'attr' => 'keterangan'],
+                ],
+            ],
+            'pengeluaran_lains' => [
+                'model' => PengeluaranLain::class,
+                'feature' => PricingPlans::FEATURE_BASIC_FINANCE,
+                'quota' => CompanySubscription::RESOURCE_PENGELUARAN_LAINS,
+                'title' => 'Pengeluaran Lain',
+                'subtitle' => 'Biaya di luar wedding dan operasional',
+                'icon' => 'minus.circle.fill',
+                'group' => 'keuangan',
+                'group_label' => 'Keuangan',
+                'title_attr' => 'name',
+                'amount_attr' => 'amount',
+                'date_attr' => 'date_expense',
+                'search' => ['name', 'note'],
+                'fields' => [
+                    ['name' => 'name', 'label' => 'Nama pengeluaran', 'type' => 'text', 'required' => true],
+                    ['name' => 'payment_method_id', 'label' => 'Rekening', 'type' => 'select', 'required' => true, 'options' => 'payment_methods', 'cast' => 'int'],
+                    ['name' => 'amount', 'label' => 'Nominal', 'type' => 'number', 'required' => true, 'cast' => 'int'],
+                    ['name' => 'date_expense', 'label' => 'Tanggal', 'type' => 'date', 'required' => true],
+                    ['name' => 'note', 'label' => 'Catatan', 'type' => 'textarea'],
+                ],
+                'detail' => [
+                    ['label' => 'Nama', 'attr' => 'name'],
+                    ['label' => 'Nominal', 'attr' => 'amount', 'format' => 'money'],
+                    ['label' => 'Tanggal', 'attr' => 'date_expense', 'format' => 'date'],
+                    ['label' => 'Catatan', 'attr' => 'note'],
+                ],
+            ],
+            'fixed_assets' => [
+                'model' => FixedAsset::class,
+                'feature' => PricingPlans::FEATURE_FIXED_ASSETS,
+                'quota' => CompanySubscription::RESOURCE_FIXED_ASSETS,
+                'plan_badge' => 'Pro',
+                'title' => 'Aset Tetap',
+                'subtitle' => 'Peralatan dan aset WO',
+                'icon' => 'building.2.fill',
+                'group' => 'profesional',
+                'group_label' => 'Professional',
+                'title_attr' => 'asset_name',
+                'subtitle_attr' => 'asset_code',
+                'amount_attr' => 'current_book_value',
+                'status_attr' => 'is_active',
+                'search' => ['asset_name', 'asset_code'],
+                'detail_with' => ['depreciations'],
+                'fields' => [
+                    ['name' => 'asset_name', 'label' => 'Nama aset', 'type' => 'text', 'required' => true],
+                    ['name' => 'category', 'label' => 'Kategori', 'type' => 'select', 'options' => FixedAsset::CATEGORIES, 'in' => array_keys(FixedAsset::CATEGORIES)],
+                    ['name' => 'purchase_date', 'label' => 'Tanggal beli', 'type' => 'date', 'required' => true],
+                    ['name' => 'purchase_price', 'label' => 'Harga perolehan', 'type' => 'number', 'required' => true, 'cast' => 'int'],
+                    ['name' => 'location', 'label' => 'Lokasi', 'type' => 'text'],
+                    ['name' => 'notes', 'label' => 'Catatan', 'type' => 'textarea'],
+                ],
+                'detail' => [
+                    ['label' => 'Kode', 'attr' => 'asset_code'],
+                    ['label' => 'Nama', 'attr' => 'asset_name'],
+                    ['label' => 'Kategori', 'attr' => 'category'],
+                    ['label' => 'Harga perolehan', 'attr' => 'purchase_price', 'format' => 'money'],
+                    ['label' => 'Nilai buku', 'attr' => 'current_book_value', 'format' => 'money'],
+                    ['label' => 'Lokasi', 'attr' => 'location'],
+                ],
+            ],
+            'bank_statements' => [
+                'model' => BankStatement::class,
+                'feature' => PricingPlans::FEATURE_RECONCILIATION,
+                'plan_badge' => 'Pro',
+                'title' => 'Rekonsiliasi',
+                'subtitle' => 'Rekening koran',
+                'icon' => 'arrow.left.arrow.right',
+                'group' => 'profesional',
+                'group_label' => 'Professional',
+                // Create/edit (upload RK + file rekonsiliasi) hanya lewat admin desktop.
+                'can_create' => false,
+                'can_update' => false,
+                'title_attr' => 'title',
+                'subtitle_attr' => 'paymentMethod.name',
+                'amount_attr' => 'closing_balance',
+                'status_attr' => 'reconciliation_status',
+                'date_attr' => 'period_start',
+                'search' => ['title', 'original_filename', 'paymentMethod.name', 'paymentMethod.bank_name', 'paymentMethod.no_rekening'],
+                'with' => ['paymentMethod:id,name,bank_name,no_rekening'],
+                'detail_with' => ['transactions'],
+                'list_filters' => [
+                    [
+                        'key' => 'payment_method_id',
+                        'column' => 'payment_method_id',
+                        'label' => 'Daftar Rekening Koran',
+                        'options' => 'rekening_koran',
+                    ],
+                ],
+                'fields' => [
+                    ['name' => 'payment_method_id', 'label' => 'Rekening', 'type' => 'select', 'required' => true, 'options' => 'payment_methods', 'cast' => 'int'],
+                    ['name' => 'title', 'label' => 'Judul', 'type' => 'text', 'required' => true],
+                    ['name' => 'period_start', 'label' => 'Periode mulai', 'type' => 'date', 'required' => true],
+                    ['name' => 'period_end', 'label' => 'Periode selesai', 'type' => 'date', 'required' => true],
+                    ['name' => 'opening_balance', 'label' => 'Saldo awal', 'type' => 'number', 'cast' => 'int'],
+                    ['name' => 'closing_balance', 'label' => 'Saldo akhir', 'type' => 'number', 'cast' => 'int'],
+                    ['name' => 'description', 'label' => 'Catatan', 'type' => 'textarea'],
+                ],
+                'detail' => [
+                    ['label' => 'Judul', 'attr' => 'title'],
+                    ['label' => 'Rekening', 'attr' => 'paymentMethod.name'],
+                    ['label' => 'Cabang', 'attr' => 'branch'],
+                    ['label' => 'Mulai', 'attr' => 'period_start', 'format' => 'date'],
+                    ['label' => 'Selesai', 'attr' => 'period_end', 'format' => 'date'],
+                    ['label' => 'Saldo awal', 'attr' => 'opening_balance', 'format' => 'money'],
+                    ['label' => 'Saldo akhir', 'attr' => 'closing_balance', 'format' => 'money'],
+                    ['label' => 'Total debit', 'attr' => 'tot_debit', 'format' => 'money'],
+                    ['label' => 'Total kredit', 'attr' => 'tot_credit', 'format' => 'money'],
+                    ['label' => 'Status', 'attr' => 'status'],
+                    ['label' => 'Catatan', 'attr' => 'description'],
+                ],
+            ],
+            'employees' => [
+                'model' => Employee::class,
+                'feature' => PricingPlans::FEATURE_PAYROLL,
+                'plan_badge' => 'Pro',
+                'title' => 'Karyawan',
+                'subtitle' => 'Master SDM',
+                'icon' => 'person.2.fill',
+                'group' => 'profesional',
+                'group_label' => 'Professional',
+                'title_attr' => 'name',
+                'subtitle_attr' => 'position',
+                'amount_attr' => 'salary',
+                'search' => ['name', 'email', 'phone', 'position'],
+                'fields' => [
+                    ['name' => 'name', 'label' => 'Nama', 'type' => 'text', 'required' => true],
+                    ['name' => 'email', 'label' => 'Email', 'type' => 'email'],
+                    ['name' => 'phone', 'label' => 'Telepon', 'type' => 'text'],
+                    ['name' => 'position', 'label' => 'Jabatan', 'type' => 'text'],
+                    ['name' => 'salary', 'label' => 'Gaji', 'type' => 'number', 'cast' => 'int'],
+                    ['name' => 'date_of_join', 'label' => 'Tanggal gabung', 'type' => 'date'],
+                ],
+                'detail' => [
+                    ['label' => 'Nama', 'attr' => 'name'],
+                    ['label' => 'Email', 'attr' => 'email'],
+                    ['label' => 'Telepon', 'attr' => 'phone'],
+                    ['label' => 'Jabatan', 'attr' => 'position'],
+                    ['label' => 'Gaji', 'attr' => 'salary', 'format' => 'money'],
+                ],
+            ],
+            'payrolls' => [
+                'model' => Payroll::class,
+                'feature' => PricingPlans::FEATURE_PAYROLL,
+                'plan_badge' => 'Pro',
+                'title' => 'Payroll',
+                'subtitle' => 'Periode gaji tim',
+                'icon' => 'banknote.fill',
+                'group' => 'profesional',
+                'group_label' => 'Professional',
+                'title_attr' => 'employee.name',
+                'amount_attr' => 'monthly_salary',
+                'search' => ['notes'],
+                'with' => ['employee:id,name'],
+                'fields' => [
+                    ['name' => 'employee_id', 'label' => 'Karyawan', 'type' => 'select', 'required' => true, 'options' => 'employees', 'cast' => 'int'],
+                    ['name' => 'period_month', 'label' => 'Bulan', 'type' => 'number', 'required' => true, 'cast' => 'int'],
+                    ['name' => 'period_year', 'label' => 'Tahun', 'type' => 'number', 'required' => true, 'cast' => 'int'],
+                    ['name' => 'gaji_pokok', 'label' => 'Gaji pokok', 'type' => 'number', 'required' => true, 'cast' => 'int'],
+                    ['name' => 'tunjangan', 'label' => 'Tunjangan', 'type' => 'number', 'cast' => 'int'],
+                    ['name' => 'pengurangan', 'label' => 'Pengurangan', 'type' => 'number', 'cast' => 'int'],
+                    ['name' => 'bonus', 'label' => 'Bonus', 'type' => 'number', 'cast' => 'int'],
+                    ['name' => 'notes', 'label' => 'Catatan', 'type' => 'textarea'],
+                ],
+                'detail' => [
+                    ['label' => 'Karyawan', 'attr' => 'employee.name'],
+                    ['label' => 'Bulan', 'attr' => 'period_month'],
+                    ['label' => 'Tahun', 'attr' => 'period_year'],
+                    ['label' => 'Gaji bulanan', 'attr' => 'monthly_salary', 'format' => 'money'],
+                    ['label' => 'Bonus', 'attr' => 'bonus', 'format' => 'money'],
+                ],
+            ],
+            'documents' => [
+                'model' => Document::class,
+                'feature' => PricingPlans::FEATURE_DOCUMENTS,
+                'plan_badge' => 'Business',
+                'title' => 'Dokumen',
+                'subtitle' => 'Dokumen resmi perusahaan',
+                'icon' => 'folder.fill',
+                'group' => 'bisnis',
+                'group_label' => 'Business',
+                'title_attr' => 'title',
+                'subtitle_attr' => 'document_number',
+                'status_attr' => 'status',
+                'date_attr' => 'date_effective',
+                'search' => ['title', 'document_number', 'summary'],
+                'with' => ['category:id,name'],
+                'detail_with' => [
+                    'category:id,name,code',
+                    'creator:id,name',
+                    'recipientsList:id,name',
+                    'approvals.user:id,name',
+                    'attachments',
+                ],
+                'fields' => [
+                    ['name' => 'title', 'label' => 'Judul', 'type' => 'text', 'required' => true, 'section' => 'Informasi umum'],
+                    ['name' => 'category_id', 'label' => 'Kategori', 'type' => 'select', 'options' => 'document_categories', 'cast' => 'int', 'required' => true, 'section' => 'Informasi umum'],
+                    ['name' => 'document_number', 'label' => 'Nomor dokumen', 'type' => 'text', 'section' => 'Informasi umum', 'readonly' => true, 'helper' => 'Otomatis dari kategori saat dokumen dibuat.'],
+                    ['name' => 'confidentiality', 'label' => 'Kerahasiaan', 'type' => 'select', 'required' => true, 'section' => 'Informasi umum', 'options' => [
+                        'public' => 'Public',
+                        'internal' => 'Internal',
+                        'confidential' => 'Confidential',
+                        'secret' => 'Secret',
+                    ]],
+                    ['name' => 'summary', 'label' => 'Ringkasan', 'type' => 'textarea', 'section' => 'Informasi umum', 'max' => 5000],
+                    ['name' => 'use_digital_signature', 'label' => 'Tanda tangan digital', 'type' => 'toggle', 'section' => 'Informasi umum'],
+                    ['name' => 'show_confidentiality_warning', 'label' => 'Peringatan kerahasiaan', 'type' => 'toggle', 'section' => 'Informasi umum'],
+                    ['name' => 'content', 'label' => 'Isi dokumen', 'type' => 'textarea', 'section' => 'Isi & tanggal', 'max' => 50000, 'helper' => 'Teks biasa di mobile. Formatting lengkap (Rich Editor) di admin desktop.'],
+                    ['name' => 'date_effective', 'label' => 'Berlaku mulai', 'type' => 'date', 'section' => 'Isi & tanggal'],
+                    ['name' => 'date_expired', 'label' => 'Berlaku hingga', 'type' => 'date', 'section' => 'Isi & tanggal'],
+                ],
+                'detail' => [
+                    ['label' => 'Judul', 'attr' => 'title'],
+                    ['label' => 'Nomor', 'attr' => 'document_number'],
+                    ['label' => 'Kategori', 'attr' => 'category.name'],
+                    ['label' => 'Kerahasiaan', 'attr' => 'confidentiality'],
+                    ['label' => 'Ringkasan', 'attr' => 'summary'],
+                    ['label' => 'Isi dokumen', 'attr' => 'content', 'format' => 'html'],
+                    ['label' => 'Berlaku mulai', 'attr' => 'date_effective', 'format' => 'date'],
+                    ['label' => 'Berlaku hingga', 'attr' => 'date_expired', 'format' => 'date'],
+                    ['label' => 'Status', 'attr' => 'status'],
+                ],
+            ],
+            'document_categories' => [
+                'model' => DocumentCategory::class,
+                'feature' => PricingPlans::FEATURE_DOCUMENTS,
+                'plan_badge' => 'Business',
+                'title' => 'Kategori Dokumen',
+                'subtitle' => 'Klasifikasi dokumen',
+                'icon' => 'tag.fill',
+                'group' => 'bisnis',
+                'group_label' => 'Business',
+                'company_scope' => true,
+                'title_attr' => 'name',
+                'subtitle_attr' => 'code',
+                'status_attr' => 'is_approval_required',
+                'search' => ['name', 'code'],
+                'with' => ['parent:id,name'],
+                'fields' => [
+                    ['name' => 'name', 'label' => 'Nama', 'type' => 'text', 'required' => true],
+                    ['name' => 'code', 'label' => 'Kode', 'type' => 'text', 'required' => true],
+                    ['name' => 'type', 'label' => 'Tipe', 'type' => 'select', 'required' => true, 'options' => [
+                        'internal' => 'Internal (SK, Memo, SOP)',
+                        'outbound' => 'Outbound (Surat Keluar)',
+                        'inbound' => 'Inbound (Surat Masuk)',
+                        'other' => 'Other',
+                    ]],
+                    ['name' => 'format_number', 'label' => 'Format nomor', 'type' => 'text', 'placeholder' => '{SEQ}/{CAT}/MKI/{ROMAN_MONTH}/{Y}'],
+                    ['name' => 'parent_id', 'label' => 'Kategori induk', 'type' => 'select', 'options' => 'document_categories', 'cast' => 'int'],
+                    ['name' => 'is_approval_required', 'label' => 'Perlu approval', 'type' => 'toggle'],
+                ],
+                'detail' => [
+                    ['label' => 'Nama', 'attr' => 'name'],
+                    ['label' => 'Kode', 'attr' => 'code'],
+                    ['label' => 'Tipe', 'attr' => 'type'],
+                    ['label' => 'Format nomor', 'attr' => 'format_number'],
+                    ['label' => 'Induk', 'attr' => 'parent.name'],
+                    ['label' => 'Perlu approval', 'attr' => 'is_approval_required'],
+                ],
+            ],
+            'sops' => [
+                'model' => Sop::class,
+                'feature' => PricingPlans::FEATURE_DOCUMENTS,
+                'plan_badge' => 'Business',
+                'title' => 'SOP',
+                'subtitle' => 'Prosedur operasional',
+                'icon' => 'checklist',
+                'group' => 'bisnis',
+                'group_label' => 'Business',
+                'title_attr' => 'title',
+                'subtitle_attr' => 'category.name',
+                'status_attr' => 'is_active',
+                'search' => ['title', 'description'],
+                'with' => ['category:id,name'],
+                'fields' => [
+                    ['name' => 'title', 'label' => 'Judul SOP', 'type' => 'text', 'required' => true],
+                    ['name' => 'category_id', 'label' => 'Kategori', 'type' => 'select', 'options' => 'sop_categories', 'cast' => 'int'],
+                    ['name' => 'description', 'label' => 'Deskripsi', 'type' => 'textarea'],
+                ],
+                'detail' => [
+                    ['label' => 'Judul', 'attr' => 'title'],
+                    ['label' => 'Kategori', 'attr' => 'category.name'],
+                    ['label' => 'Deskripsi', 'attr' => 'description'],
+                    ['label' => 'Versi', 'attr' => 'version'],
+                ],
+            ],
+            'sop_categories' => [
+                'model' => SopCategory::class,
+                'feature' => PricingPlans::FEATURE_DOCUMENTS,
+                'plan_badge' => 'Business',
+                'title' => 'Kategori SOP',
+                'subtitle' => 'Kelompok prosedur',
+                'icon' => 'square.stack.3d.up.fill',
+                'group' => 'bisnis',
+                'group_label' => 'Business',
+                'title_attr' => 'name',
+                'subtitle_attr' => 'description',
+                'status_attr' => 'is_active',
+                'search' => ['name'],
+                'fields' => [
+                    ['name' => 'name', 'label' => 'Nama', 'type' => 'text', 'required' => true],
+                    ['name' => 'description', 'label' => 'Deskripsi', 'type' => 'textarea'],
+                ],
+                'detail' => [
+                    ['label' => 'Nama', 'attr' => 'name'],
+                    ['label' => 'Deskripsi', 'attr' => 'description'],
+                ],
+            ],
+            'documentations' => [
+                'model' => Documentation::class,
+                'feature' => PricingPlans::FEATURE_DOCUMENTS,
+                'plan_badge' => 'Business',
+                'title' => 'Knowledge Base',
+                'subtitle' => 'Artikel internal tim',
+                'icon' => 'book.fill',
+                'group' => 'bisnis',
+                'group_label' => 'Business',
+                'title_attr' => 'title',
+                'subtitle_attr' => 'category.name',
+                'status_attr' => 'is_published',
+                'search' => ['title', 'content', 'keywords'],
+                'with' => ['category:id,name'],
+                'fields' => [
+                    ['name' => 'title', 'label' => 'Judul', 'type' => 'text', 'required' => true],
+                    ['name' => 'documentation_category_id', 'label' => 'Kategori', 'type' => 'select', 'options' => 'documentation_categories', 'cast' => 'int'],
+                    ['name' => 'content', 'label' => 'Isi', 'type' => 'textarea', 'required' => true],
+                ],
+                'detail' => [
+                    ['label' => 'Judul', 'attr' => 'title'],
+                    ['label' => 'Kategori', 'attr' => 'category.name'],
+                    ['label' => 'Isi', 'attr' => 'content'],
+                ],
+            ],
+            'documentation_categories' => [
+                'model' => DocumentationCategory::class,
+                'feature' => PricingPlans::FEATURE_DOCUMENTS,
+                'plan_badge' => 'Business',
+                'title' => 'Kategori Knowledge',
+                'subtitle' => 'Kelompok artikel',
+                'icon' => 'books.vertical.fill',
+                'group' => 'bisnis',
+                'group_label' => 'Business',
+                'title_attr' => 'name',
+                'status_attr' => 'is_active',
+                'search' => ['name'],
+                'fields' => [
+                    ['name' => 'name', 'label' => 'Nama', 'type' => 'text', 'required' => true],
+                ],
+                'detail' => [
+                    ['label' => 'Nama', 'attr' => 'name'],
+                ],
+            ],
+            'data_pribadis' => [
+                'model' => DataPribadi::class,
+                'feature' => PricingPlans::FEATURE_CREW_FREELANCE,
+                'plan_badge' => 'Business',
+                'title' => 'Crew Freelance',
+                'subtitle' => 'Data crew undangan',
+                'icon' => 'person.crop.rectangle.fill',
+                'group' => 'bisnis',
+                'group_label' => 'Business',
+                'title_attr' => 'nama_lengkap',
+                'subtitle_attr' => 'pekerjaan',
+                'image_attr' => 'foto',
+                'search' => ['nama_lengkap', 'email', 'pekerjaan'],
+                'fields' => [
+                    ['name' => 'nama_lengkap', 'label' => 'Nama lengkap', 'type' => 'text', 'required' => true],
+                    ['name' => 'email', 'label' => 'Email', 'type' => 'email'],
+                    ['name' => 'nomor_telepon', 'label' => 'Telepon', 'type' => 'text'],
+                    ['name' => 'pekerjaan', 'label' => 'Pekerjaan', 'type' => 'text'],
+                    ['name' => 'alamat', 'label' => 'Alamat', 'type' => 'textarea'],
+                ],
+                'detail' => [
+                    ['label' => 'Nama', 'attr' => 'nama_lengkap'],
+                    ['label' => 'Email', 'attr' => 'email'],
+                    ['label' => 'Telepon', 'attr' => 'nomor_telepon'],
+                    ['label' => 'Pekerjaan', 'attr' => 'pekerjaan'],
+                    ['label' => 'Alamat', 'attr' => 'alamat'],
+                ],
+            ],
+            'account_manager_targets' => [
+                'model' => AccountManagerTarget::class,
+                'feature' => PricingPlans::FEATURE_ADVANCED_REPORTS,
+                'plan_badge' => 'Business',
+                'title' => 'Target AM',
+                'subtitle' => 'Target versus closing',
+                'icon' => 'chart.bar.fill',
+                'group' => 'bisnis',
+                'group_label' => 'Business',
+                'title_attr' => 'user.name',
+                'amount_attr' => 'target_amount',
+                'status_attr' => 'status',
+                'search' => ['status'],
+                'with' => ['user:id,name'],
+                'fields' => [
+                    ['name' => 'user_id', 'label' => 'Account Manager', 'type' => 'select', 'required' => true, 'options' => 'users', 'cast' => 'int'],
+                    ['name' => 'year', 'label' => 'Tahun', 'type' => 'number', 'required' => true, 'cast' => 'int'],
+                    ['name' => 'month', 'label' => 'Bulan', 'type' => 'number', 'required' => true, 'cast' => 'int'],
+                    ['name' => 'target_amount', 'label' => 'Target', 'type' => 'number', 'required' => true, 'cast' => 'int'],
+                    ['name' => 'achieved_amount', 'label' => 'Pencapaian', 'type' => 'number', 'cast' => 'int'],
+                ],
+                'detail' => [
+                    ['label' => 'AM', 'attr' => 'user.name'],
+                    ['label' => 'Tahun', 'attr' => 'year'],
+                    ['label' => 'Bulan', 'attr' => 'month'],
+                    ['label' => 'Target', 'attr' => 'target_amount', 'format' => 'money'],
+                    ['label' => 'Pencapaian', 'attr' => 'achieved_amount', 'format' => 'money'],
+                    ['label' => 'Status', 'attr' => 'status'],
+                ],
+            ],
+            'team' => [
+                'model' => User::class,
+                'feature' => PricingPlans::FEATURE_ROLE_MANAGEMENT,
+                'quota' => CompanySubscription::RESOURCE_USERS,
+                'plan_badge' => 'Business',
+                'allowed_team' => true,
+                'title' => 'Tim',
+                'subtitle' => 'Pengguna company ini',
+                'icon' => 'person.3.fill',
+                'group' => 'perusahaan',
+                'group_label' => 'Perusahaan',
+                'company_scope' => true,
+                'title_attr' => 'name',
+                'subtitle_attr' => 'email',
+                'status_attr' => 'status',
+                'search' => ['name', 'email'],
+                'fields' => [
+                    ['name' => 'name', 'label' => 'Nama', 'type' => 'text', 'required' => true],
+                    ['name' => 'email', 'label' => 'Email', 'type' => 'email', 'required' => true, 'unique' => ['users', 'email']],
+                    ['name' => 'password', 'label' => 'Password', 'type' => 'text', 'required' => true],
+                    ['name' => 'phone_number', 'label' => 'Telepon', 'type' => 'text'],
+                ],
+                'detail' => [
+                    ['label' => 'Nama', 'attr' => 'name'],
+                    ['label' => 'Email', 'attr' => 'email'],
+                    ['label' => 'Telepon', 'attr' => 'phone_number'],
+                    ['label' => 'Status', 'attr' => 'status'],
+                ],
+            ],
+        ];
+    }
+}

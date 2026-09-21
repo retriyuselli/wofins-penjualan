@@ -11,6 +11,9 @@ return [
         'contact_whatsapp' => env('WOFINS_LICENSE_WHATSAPP', 'https://wa.me/6281373183794?text=Halo,%20saya%20perlu%20perpanjang%20lisensi%20WOFINS.'),
     ],
 
+    'default_subscription_plan' => env('WOFINS_DEFAULT_SUBSCRIPTION_PLAN', 'starter'),
+    'pro_features_enabled' => (bool) env('WOFINS_PRO_FEATURES_ENABLED', false),
+
     'provider' => [
         'legal_name' => env('WOFINS_PROVIDER_NAME', 'Makna Kreatif Indonesia'),
         'brand' => env('WOFINS_PROVIDER_BRAND', 'WOFINS'),
