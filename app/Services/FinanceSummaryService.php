@@ -994,7 +994,7 @@ class FinanceSummaryService
         });
 
         // Newest first for mobile list; keep running_balance computed oldest→newest.
-        $perPage = min(max($perPage, 1), 100);
+        $perPage = min(max($perPage, 1), 200);
         $page = max($page, 1);
         $all = $withBalance->sortByDesc('date')->values();
         $data = $all->forPage($page, $perPage)->values()->all();

@@ -550,8 +550,8 @@ class FinanceController extends Controller
             'to' => ['nullable', 'date'],
             'type' => ['nullable', 'string', 'in:wedding_payment,other_income,wedding_expense,operational_expense,other_expense'],
             'direction' => ['nullable', 'string', 'in:in,out'],
-            'limit' => ['nullable', 'integer', 'min:1', 'max:100'],
-            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:200'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:200'],
             'page' => ['nullable', 'integer', 'min:1'],
         ]);
 
