@@ -9,6 +9,7 @@ use App\Services\AppLicenseService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -37,6 +38,28 @@ class AuthController extends Controller
         $this->assertLicenseAllowsLogin($license);
 
         return $this->tokenResponse($user, $credentials['device_name'] ?? 'ios-app');
+    }
+
+    /**
+     * Send password reset link for mobile / in-app forgot-password flow.
+     */
+    public function forgotPassword(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'email' => ['required', 'email'],
+        ]);
+
+        $status = Password::sendResetLink(['email' => $data['email']]);
+
+        if ($status === Password::RESET_LINK_SENT) {
+            return response()->json([
+                'message' => 'Link reset password telah dikirim ke email Anda.',
+            ]);
+        }
+
+        throw ValidationException::withMessages([
+            'email' => [__($status)],
+        ]);
     }
 
     public function logout(Request $request): JsonResponse
