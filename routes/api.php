@@ -10,6 +10,12 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 | API Routes — WOFINS iOS / mobile (wofins-penjualan)
 |--------------------------------------------------------------------------
+|
+| Satu codebase untuk semua domain klien (tigadefinance.com, saranafinance.com,
+| demo.wofins.id, …). Transaksi Masuk/Keluar/Wedding/Operasional:
+| GET /api/v1/finance/transactions?direction=in|out&type=…
+| Tambah transaksi: POST /api/v1/modules/{expenses|expense_ops|pendapatan_lains|…}
+|
 */
 
 Route::prefix('v1')->group(function () {

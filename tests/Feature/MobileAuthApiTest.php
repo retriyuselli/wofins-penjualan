@@ -30,6 +30,9 @@ class MobileAuthApiTest extends TestCase
         $this->assertTrue(Route::has('api.v1.auth.logout'));
         $this->assertTrue(Route::has('api.v1.me'));
         $this->assertTrue(Route::has('api.v1.finance.dashboard'));
+        $this->assertTrue(Route::has('api.v1.finance.transactions'));
+        $this->assertTrue(Route::has('api.v1.modules.index'));
+        $this->assertTrue(Route::has('api.v1.modules.store'));
 
         $login = Route::getRoutes()->getByName('api.v1.auth.login');
         $this->assertNotNull($login);
@@ -162,6 +165,71 @@ class MobileAuthApiTest extends TestCase
                     ],
                 ],
             ]);
+    }
+
+    public function test_transactions_supports_masuk_keluar_wedding_operasional_filters(): void
+    {
+        $user = User::withoutEvents(fn () => User::query()->create([
+            'name' => 'Finance User',
+            'email' => 'txn@example.com',
+            'password' => Hash::make('secret123'),
+            'status' => 'active',
+        ]));
+
+        $roleId = Schema::hasTable('roles')
+            ? \Illuminate\Support\Facades\DB::table('roles')->insertGetId([
+                'name' => 'super_admin',
+                'guard_name' => 'web',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ])
+            : null;
+
+        if ($roleId) {
+            \Illuminate\Support\Facades\DB::table('model_has_roles')->insert([
+                'role_id' => $roleId,
+                'model_type' => User::class,
+                'model_id' => $user->id,
+            ]);
+        }
+
+        $token = $user->createToken('iphone-test', ['mobile'])->plainTextToken;
+
+        $this->withToken($token)
+            ->getJson('/api/v1/finance/transactions')
+            ->assertOk()
+            ->assertJsonStructure([
+                'data',
+                'meta' => [
+                    'total_in',
+                    'total_out',
+                    'net',
+                    'count',
+                    'current_page',
+                    'last_page',
+                    'per_page',
+                    'total',
+                ],
+            ]);
+
+        // Tab Masuk / Keluar di iOS.
+        $this->withToken($token)
+            ->getJson('/api/v1/finance/transactions?direction=in')
+            ->assertOk();
+        $this->withToken($token)
+            ->getJson('/api/v1/finance/transactions?direction=out')
+            ->assertOk();
+
+        // Tab Operasional; Wedding difilter di client dari type wedding_*.
+        $this->withToken($token)
+            ->getJson('/api/v1/finance/transactions?type=operational_expense')
+            ->assertOk();
+        $this->withToken($token)
+            ->getJson('/api/v1/finance/transactions?type=wedding_payment')
+            ->assertOk();
+        $this->withToken($token)
+            ->getJson('/api/v1/finance/transactions?type=wedding_expense')
+            ->assertOk();
     }
 
     private function createMinimalAuthSchema(): void
