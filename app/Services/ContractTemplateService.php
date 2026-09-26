@@ -197,6 +197,27 @@ class ContractTemplateService
         return ContractTemplate::makeFromDefaults();
     }
 
+    public function ensureSpkTemplate(): ContractTemplate
+    {
+        $existing = $this->existingSpkTemplate();
+
+        if ($existing) {
+            return $existing;
+        }
+
+        $company = Company::query()->first();
+        $hasActiveCompanyTemplate = $company && ContractTemplate::query()
+            ->where('company_id', $company->id)
+            ->where('is_active', true)
+            ->exists();
+
+        return ContractTemplate::makeFromSpk([
+            'company_id' => $company?->id,
+            'is_system_default' => false,
+            'is_active' => ! $hasActiveCompanyTemplate,
+        ]);
+    }
+
     public function syncSystemDefault(): ContractTemplate
     {
         $template = ContractTemplate::query()
@@ -291,13 +312,7 @@ class ContractTemplateService
             return null;
         }
 
-        $alreadyHasSpk = ContractTemplate::query()
-            ->where('is_system_default', false)
-            ->with('sections')
-            ->get()
-            ->contains(fn (ContractTemplate $template): bool => $this->isSpkTemplate($template));
-
-        if ($alreadyHasSpk) {
+        if ($this->existingSpkTemplate()) {
             return null;
         }
 
@@ -309,6 +324,15 @@ class ContractTemplateService
             'is_active' => true,
             'name' => ContractTemplateDefaults::spkTemplateAttributes()['name'],
         ]);
+    }
+
+    private function existingSpkTemplate(): ?ContractTemplate
+    {
+        return ContractTemplate::query()
+            ->where('is_system_default', false)
+            ->with('sections')
+            ->get()
+            ->first(fn (ContractTemplate $template): bool => $this->isSpkTemplate($template));
     }
 
     private function pasal2OpeningHtml(?string $body): string
