@@ -248,8 +248,11 @@ class InvoiceOrderController extends Controller
             'expenses.vendor',
         ])->findOrFail($order->id);
 
+        $company = Schema::hasTable('companies') ? Company::query()->first() : null;
+
         $pdf = Pdf::loadView('pdf.single_order_profit_loss', [
             'order' => $order,
+            'company' => $company,
             'generatedDate' => now()->format('d F Y H:i'),
         ]);
 

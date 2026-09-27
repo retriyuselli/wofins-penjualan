@@ -484,6 +484,31 @@
     @php
         $company = $company ?? \App\Models\Company::query()->first();
         $companyName = $company?->company_name ?? config('app.name', 'Your Company');
+        $companyAddress = $company?->address ?? config('invoice.address', 'Your Company Address');
+        $companyPhone = $company?->phone ?? config('invoice.phone', '+123456789');
+        $companyEmail = $company?->email ?? config('invoice.email', 'info@yourcompany.com');
+
+        $logoBase64 = $logoBase64 ?? '';
+        if ($logoBase64 === '') {
+            $logoPath = null;
+            if (
+                $company?->logo_url
+                && \Illuminate\Support\Facades\Storage::disk('public')->exists($company->logo_url)
+            ) {
+                $logoPath = \Illuminate\Support\Facades\Storage::disk('public')->path($company->logo_url);
+            } else {
+                $fallback = public_path(config('invoice.logo', 'images/logomki.png'));
+                $logoPath = file_exists($fallback) ? $fallback : public_path('images/logomki.png');
+            }
+
+            if (is_string($logoPath) && is_readable($logoPath)) {
+                $mime = mime_content_type($logoPath) ?: 'image/png';
+                $data = @file_get_contents($logoPath);
+                if (is_string($data) && $data !== '') {
+                    $logoBase64 = 'data:'.$mime.';base64,'.base64_encode($data);
+                }
+            }
+        }
     @endphp
     <!-- Header (berulang di setiap halaman) -->
     <header>
@@ -491,27 +516,13 @@
         <tr>
             <td style="width: 60%; text-align: left; vertical-align: top;">
                 <h2>{{ $companyName }}</h2>
-                <p>{{ config('invoice.address', 'Your Company Address') }}</p>
-                <p>Phone : {{ config('invoice.phone', '+123456789') }}</p>
-                <p>Email : {{ config('invoice.email', 'info@yourcompany.com') }}</p>
+                <p>{{ $companyAddress }}</p>
+                <p>Phone : {{ $companyPhone }}</p>
+                <p>Email : {{ $companyEmail }}</p>
             </td>
             <td style="width: 40%; text-align: right; vertical-align: middle;">
-                {{-- Embed image using Base64 for reliable PDF rendering --}}
-                @php
-                    $logoPath = public_path(config('invoice.logo', 'images/logo.png'));
-                    if (file_exists($logoPath)) {
-                        $logoType = pathinfo($logoPath, PATHINFO_EXTENSION);
-                        $logoData = file_get_contents($logoPath);
-                        $logoBase64 = 'data:image/' . $logoType . ';base64,' . base64_encode($logoData);
-                    } else {
-                        $logoBase64 = ''; /* Handle missing logo */
-                    }
-                @endphp
                 @if ($logoBase64)
-                    <img src="{{ $logoBase64 }}" alt="Company Logo">
-                @else
-                    {{-- Optional: Display text or placeholder if logo is missing --}}
-                    <span>Logo</span>
+                    <img src="{{ $logoBase64 }}" alt="{{ $companyName }}" style="max-width: 180px; max-height: 42px; width: auto; height: auto;">
                 @endif
             </td>
         </tr>

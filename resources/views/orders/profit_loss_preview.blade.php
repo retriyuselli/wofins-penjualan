@@ -143,18 +143,31 @@
 </head>
 
 <body class="bg-gray-50 p-6">
+    @php
+        $company = $company ?? \App\Models\Company::query()->first();
+        $companyName = $company?->company_name ?? ($companyName ?? config('app.name'));
+        $logoSrc = $companyLogoUrl ?? null;
+        if (! $logoSrc && $company?->logo_url && \Illuminate\Support\Facades\Storage::disk('public')->exists($company->logo_url)) {
+            $logoSrc = \Illuminate\Support\Facades\Storage::disk('public')->url($company->logo_url);
+        }
+        $logoSrc = $logoSrc ?: asset(config('invoice.logo', 'images/logomki.png'));
+    @endphp
     <div class="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-lg">
         <!-- Header Section -->
         <div class="header text-center">
-            <div class="flex justify-between items-center mb-4">
-                <div>
-                    <img src="{{ asset(config('invoice.logo', 'images/logo.png')) }}" alt="Company Logo" 
-                         class="h-12 w-auto">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+                <div class="min-w-0 max-w-full">
+                    <img src="{{ $logoSrc }}" alt="{{ $companyName }}"
+                         class="h-12 w-auto max-w-full object-contain">
                 </div>
-                <div class="text-right">
-                    <h2 class="text-lg font-semibold text-gray-800">{{ $companyName ?? config('app.name') }}</h2>
-                    <p class="text-sm text-gray-600">Jl. Contoh No. 123, Jakarta</p>
-                    <p class="text-sm text-gray-600">Tel: (021) 123-4567</p>
+                <div class="text-left sm:text-right min-w-0 max-w-full">
+                    <h2 class="text-lg font-semibold text-gray-800 break-words">{{ $companyName }}</h2>
+                    @if (filled($company?->address))
+                        <p class="text-sm text-gray-600 break-words">{{ $company->address }}</p>
+                    @endif
+                    @if (filled($company?->phone))
+                        <p class="text-sm text-gray-600">Tel: {{ $company->phone }}</p>
+                    @endif
                 </div>
             </div>
             
