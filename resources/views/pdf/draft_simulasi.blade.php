@@ -247,12 +247,15 @@
         $totalAdditionVendor = $penambahanHarga->sum('harga_vendor');
 
         $calculationTotalReductions = $pengurangans->sum('amount');
+        $calculationVendorReductions = $pengurangans
+            ->reject(fn ($row) => \App\Services\ProductPricingCalculator::isPublishOnly($row->publish_only ?? false))
+            ->sum('amount');
 
         $basePackagePrice = $totalPublicPrice;
         $baseVendorPrice = $totalVendorPrice;
 
         $finalPublicPriceAfterDiscounts = $basePackagePrice + $totalAdditionPublish - $calculationTotalReductions;
-        $finalVendorPriceAfterDiscounts = $baseVendorPrice + $totalAdditionVendor - $calculationTotalReductions;
+        $finalVendorPriceAfterDiscounts = $baseVendorPrice + $totalAdditionVendor - $calculationVendorReductions;
 
         $calculationProfitLoss = $finalPublicPriceAfterDiscounts - $finalVendorPriceAfterDiscounts;
     @endphp
@@ -373,7 +376,7 @@
                 @foreach ($pengurangans as $pengurangan_item)
                     <tr>
                         <td>
-                            <div><strong>{{ $pengurangan_item->description ?? ($pengurangan_item->name ?? 'Pengurangan Tanpa Nama') }}</strong></div>
+                            <div><strong>{{ $pengurangan_item->description ?? ($pengurangan_item->name ?? 'Pengurangan Tanpa Nama') }}</strong>@if ($pengurangan_item->publish_only) <span style="font-weight: normal;">(Publish saja)</span>@endif</div>
                             @if (!empty($pengurangan_item->notes))
                                 <div class="item-desc">{!! \App\Support\SafeHtml::fromRichText($pengurangan_item->notes) !!}</div>
                             @endif

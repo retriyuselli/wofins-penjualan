@@ -676,6 +676,9 @@
                             <td class="text-center">{{ $index + 1 }}</td>
                             <td>
                                 {{ \Illuminate\Support\Str::title($itemPengurangan->description ?? 'N/A') }}
+                                @if ($itemPengurangan->publish_only)
+                                    <span style="font-weight: normal;"> (Publish saja)</span>
+                                @endif
                             </td>
                             <td class="text-right">Rp {{ number_format($itemPengurangan->amount ?? 0, 0, ',', '.') }}</td>
                         </tr>
