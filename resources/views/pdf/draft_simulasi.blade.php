@@ -376,7 +376,7 @@
                 @foreach ($pengurangans as $pengurangan_item)
                     <tr>
                         <td>
-                            <div><strong>{{ $pengurangan_item->description ?? ($pengurangan_item->name ?? 'Pengurangan Tanpa Nama') }}</strong>@if ($pengurangan_item->publish_only) <span style="font-weight: normal;">(Publish saja)</span>@endif</div>
+                            <div><strong>{{ $pengurangan_item->description ?? ($pengurangan_item->name ?? 'Pengurangan Tanpa Nama') }}</strong></div>
                             @if (!empty($pengurangan_item->notes))
                                 <div class="item-desc">{!! \App\Support\SafeHtml::fromRichText($pengurangan_item->notes) !!}</div>
                             @endif
