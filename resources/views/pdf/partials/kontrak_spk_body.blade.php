@@ -181,25 +181,41 @@
             ? $record->created_at->copy()->setTimezone('Asia/Jakarta')->locale('id')->translatedFormat('d F Y')
             : \Carbon\Carbon::now('Asia/Jakarta')->locale('id')->translatedFormat('d F Y') }}
     </div>
+    <br>
+    <br>
+    @php
+        $ownerSignatureSrc = $company?->ownerSignatureDataUriFor(\App\Enums\SignaturePlaceholderType::DraftKontrak);
+    @endphp
     <div class="signature-section" style="margin-top: 0;">
         <table class="signature-table">
             <tr>
-                <td style="width: 50%;">Direktur</td>
-                <td style="width: 50%;">Calon Pengantin</td>
+                <td class="signature-label" style="width: 48%;">Direktur</td>
+                <td style="width: 4%;"></td>
+                <td class="signature-label" style="width: 48%;">Calon Pengantin</td>
             </tr>
             <tr>
-                <td style="vertical-align: bottom; height: 120px;">
-                    <div style="text-decoration: underline;">
-                        {{ $companyOwnerName }}
-                    </div>
-                    <b>Direktur</b>
+                <td class="signature-slot">
+                    @if ($ownerSignatureSrc)
+                        <img src="{{ $ownerSignatureSrc }}" alt="Tanda tangan owner">
+                    @endif
                 </td>
-                <td style="vertical-align: bottom; height: 120px;">
-                    <div style="text-decoration: underline;">
-                        {{ $record->name_ttd ?? $prospect->name_cpw ?? '....................' }}
-                    </div>
-                    <b>Calon Pengantin</b>
-                </td>
+                <td></td>
+                <td class="signature-slot">&nbsp;</td>
+            </tr>
+            <tr>
+                <td class="signature-name">{{ $companyOwnerName }}</td>
+                <td></td>
+                <td class="signature-name">{{ $record->name_ttd ?? $prospect->name_cpw ?? '....................' }}</td>
+            </tr>
+            <tr>
+                <td><div class="signature-rule"></div></td>
+                <td></td>
+                <td><div class="signature-rule"></div></td>
+            </tr>
+            <tr>
+                <td class="signature-role"><b>Direktur</b></td>
+                <td></td>
+                <td class="signature-role"><b>Calon Pengantin</b></td>
             </tr>
         </table>
     </div>

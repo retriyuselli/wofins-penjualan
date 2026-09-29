@@ -19,7 +19,7 @@ class ProductDisplayController extends Controller
     {
         $company = null;
         if (Schema::hasTable('companies')) {
-            $company = Company::query()->first();
+            $company = Company::query()->with('owner')->first();
         }
 
         if ($company && $company->logo_url && Storage::disk('public')->exists($company->logo_url)) {

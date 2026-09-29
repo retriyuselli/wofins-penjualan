@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\SignaturePlaceholderType;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -18,6 +19,7 @@ class Company extends Model
         'company_name',
         'business_license',
         'owner_name',
+        'owner_user_id',
         'jabatan_owner',
         'inisial_wo',
         'inisial_kontak',
@@ -47,6 +49,7 @@ class Company extends Model
         'tax_office',
         'legal_documents',
         'legal_document_status',
+        'signature_placeholder_types',
         'payment_method_id',
     ];
 
@@ -58,7 +61,22 @@ class Company extends Model
         'nib_valid_until' => 'date',
         'npwp_issued_date' => 'date',
         'legal_documents' => 'array',
+        'signature_placeholder_types' => 'array',
     ];
+
+    protected static function booted(): void
+    {
+        static::saving(function (Company $company): void {
+            if (! $company->owner_user_id) {
+                return;
+            }
+
+            $name = User::query()->whereKey($company->owner_user_id)->value('name');
+            if (is_string($name) && $name !== '') {
+                $company->owner_name = $name;
+            }
+        });
+    }
 
 
     public function getActivitylogOptions(): LogOptions
@@ -111,6 +129,45 @@ class Company extends Model
         }
 
         return asset('images/favicon_makna.png');
+    }
+
+    public function owner(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'owner_user_id');
+    }
+
+    public function showsOwnerSignatureOn(SignaturePlaceholderType $type): bool
+    {
+        return in_array($type->value, $this->signature_placeholder_types ?? [], true);
+    }
+
+    public function ownerSignatureDataUri(): ?string
+    {
+        $this->loadMissing('owner');
+
+        $path = $this->owner?->signature_url;
+        if (! is_string($path) || $path === '' || ! Storage::disk('public')->exists($path)) {
+            return null;
+        }
+
+        $fullPath = Storage::disk('public')->path($path);
+        $binary = @file_get_contents($fullPath);
+        if ($binary === false || $binary === '') {
+            return null;
+        }
+
+        $mime = @mime_content_type($fullPath) ?: 'image/png';
+
+        return 'data:'.$mime.';base64,'.base64_encode($binary);
+    }
+
+    public function ownerSignatureDataUriFor(SignaturePlaceholderType $type): ?string
+    {
+        if (! $this->showsOwnerSignatureOn($type)) {
+            return null;
+        }
+
+        return $this->ownerSignatureDataUri();
     }
 
     public function paymentMethod(): BelongsTo

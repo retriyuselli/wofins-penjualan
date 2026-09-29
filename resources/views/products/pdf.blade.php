@@ -233,14 +233,52 @@
             width: 100%;
             margin-top: 30px;
             page-break-inside: auto;
-            /* Izinkan tabel tanda tangan terpotong */
             font-size: 9pt;
+            border-collapse: collapse;
+        }
+
+        .signature-table td {
+            text-align: center;
+            padding: 0;
+        }
+
+        .signature-label {
+            font-weight: bold;
+            padding-bottom: 8px;
+        }
+
+        .signature-slot {
+            height: 60px;
+            vertical-align: bottom;
+        }
+
+        .signature-slot img {
+            height: 55px;
+            width: auto;
+            max-width: 140px;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .signature-name {
+            padding-top: 2px;
+            font-size: 8pt;
+        }
+
+        .signature-rule {
+            border-top: 1px solid #000;
+            width: 70%;
+            margin: 2px auto 0;
+        }
+
+        .signature-role {
+            padding-top: 2px;
+            font-size: 8pt;
         }
 
         .signature-line {
             border-top: 1px solid #000;
             margin: 0 20px;
-            /* Margin kiri kanan untuk garis */
         }
 
         .footer {
@@ -563,32 +601,38 @@
         </div>
 
         {{-- Signatures --}}
+        @php
+            $ownerSignatureSrc = $company?->ownerSignatureDataUriFor(\App\Enums\SignaturePlaceholderType::Produk);
+        @endphp
         <table class="signature-table" style="width: 100%;">
             <tr>
-                {{-- Kolom Kiri: Approval By --}}
-                <td style="width: 48%; text-align: center; vertical-align: top; padding: 0;">
-                    <p style="margin-bottom: 70px;"><strong>Approval By:</strong></p>
-                    <br>
-                    <br>
-                    <p style="margin-top: 2px; margin-bottom: 1.5px; font-size: 8pt;">{{ $company?->owner_name ?? 'Nama Owner' }}</p>
-                    <div style="border-top: 1px solid #000; width: 70%; margin: 2px auto 0;"></div>
-                    <p style="margin-top: 2px; font-size: 8pt;">{{ $company?->jabatan_owner ?? 'Jabatan Jawaban Owner' }}</p>
+                <td class="signature-label" style="width: 48%;">Approval By:</td>
+                <td style="width: 4%;"></td>
+                <td class="signature-label" style="width: 48%;">Prepared By:</td>
+            </tr>
+            <tr>
+                <td class="signature-slot">
+                    @if ($ownerSignatureSrc)
+                        <img src="{{ $ownerSignatureSrc }}" alt="Tanda tangan owner">
+                    @endif
                 </td>
-
-                {{-- Spasi antara kolom --}}
-                <td style="width: 4%; padding: 0;"></td>
-
-                {{-- Kolom Kanan: Prepared By --}}
-                <td style="width: 48%; text-align: center; vertical-align: top; padding: 0;">
-                    <p style="margin-bottom: 70px;"><strong>Prepared By:</strong></p>
-                    <br>
-                    <br>
-                    <p style="margin-top: 2px; margin-bottom: 1.5px; font-size: 8pt;">
-                        {{ $product->lastEditedBy?->name ?? auth()->user()->name ?? 'System' }}
-                    </p>
-                    <div style="border-top: 1px solid #000; width: 70%; margin: 2px auto 0;"></div>
-                    <p style="margin-top: 2px; font-size: 8pt;">Account Manager</p>
-                </td>
+                <td></td>
+                <td class="signature-slot">&nbsp;</td>
+            </tr>
+            <tr>
+                <td class="signature-name">{{ $company?->owner_name ?? 'Nama Owner' }}</td>
+                <td></td>
+                <td class="signature-name">{{ $product->lastEditedBy?->name ?? auth()->user()->name ?? 'System' }}</td>
+            </tr>
+            <tr>
+                <td><div class="signature-rule"></div></td>
+                <td></td>
+                <td><div class="signature-rule"></div></td>
+            </tr>
+            <tr>
+                <td class="signature-role">{{ $company?->jabatan_owner ?? 'Jabatan Jawaban Owner' }}</td>
+                <td></td>
+                <td class="signature-role">Account Manager</td>
             </tr>
         </table>
 

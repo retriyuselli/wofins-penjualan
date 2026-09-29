@@ -197,36 +197,50 @@
             ? $record->created_at->copy()->setTimezone('Asia/Jakarta')->locale('id')->translatedFormat('d F Y')
             : \Carbon\Carbon::now('Asia/Jakarta')->locale('id')->translatedFormat('d F Y') }}
     </div>
+    <br>
+    <br>
+    @php
+        $ownerSignatureSrc = $company?->ownerSignatureDataUriFor(\App\Enums\SignaturePlaceholderType::DraftKontrak);
+    @endphp
     <div class="signature-section" style="margin-top: 0;">
         <table class="signature-table">
+            <colgroup>
+                <col style="width: 35%;">
+                <col style="width: 32.5%;">
+                <col style="width: 32.5%;">
+            </colgroup>
             <tr>
-                <td style="width: 35%;">
-                    Menyetujui,<br>
+                <td class="signature-label" style="width: 35%;">
+                    Menyetujui,
                 </td>
-                <td colspan="2" style="width: 65%;">
+                <td class="signature-label" colspan="2" style="width: 65%;">
                     Mengetahui,<br>
                     {{ $companyName }}
                 </td>
             </tr>
             <tr>
-                <td style="vertical-align: bottom; height: 120px;">
-                    <div style="text-decoration: underline;">
-                        {{ $record->name_ttd ?? '....................' }}
-                    </div>
-                    <b>{{ $record->title_ttd ?? 'Calon Pengantin' }}</b>
+                <td class="signature-slot">&nbsp;</td>
+                <td class="signature-slot">
+                    @if ($ownerSignatureSrc)
+                        <img src="{{ $ownerSignatureSrc }}" alt="Tanda tangan owner">
+                    @endif
                 </td>
-                <td style="vertical-align: bottom; height: 100px;">
-                    <div style="text-decoration: underline;">
-                        {{ $companyOwnerName }}
-                    </div>
-                    <b>{{ $companyOwnerPosition }}</b>
-                </td>
-                <td style="vertical-align: bottom; height: 100px;">
-                    <div style="text-decoration: underline;">
-                        {{ $record->user?->name ?? 'Account Manager' }}
-                    </div>
-                    <b>Account Manager</b>
-                </td>
+                <td class="signature-slot">&nbsp;</td>
+            </tr>
+            <tr>
+                <td class="signature-name">{{ $record->name_ttd ?? '....................' }}</td>
+                <td class="signature-name">{{ $companyOwnerName }}</td>
+                <td class="signature-name">{{ $record->user?->name ?? 'Account Manager' }}</td>
+            </tr>
+            <tr>
+                <td><div class="signature-rule"></div></td>
+                <td><div class="signature-rule"></div></td>
+                <td><div class="signature-rule"></div></td>
+            </tr>
+            <tr>
+                <td class="signature-role"><b>{{ $record->title_ttd ?? 'Calon Pengantin' }}</b></td>
+                <td class="signature-role"><b>{{ $companyOwnerPosition }}</b></td>
+                <td class="signature-role"><b>Account Manager</b></td>
             </tr>
         </table>
     </div>

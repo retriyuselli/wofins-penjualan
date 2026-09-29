@@ -2,16 +2,20 @@
 
 namespace App\Filament\Resources\Companies\Schemas;
 
+use App\Enums\SignaturePlaceholderType;
 use App\Models\User;
 use App\Support\PhoneNumber;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 
@@ -41,11 +45,32 @@ class CompanyForm
                                                     ->required()
                                                     ->maxLength(255)
                                                     ->placeholder('Nomor izin usaha'),
-                                                TextInput::make('owner_name')
+                                                Select::make('owner_user_id')
+                                                    ->label('Owner Nama')
+                                                    ->relationship('owner', 'name')
+                                                    ->searchable()
+                                                    ->preload()
                                                     ->required()
-                                                    ->minLength(3)
-                                                    ->maxLength(255)
-                                                    ->placeholder('Nama pemilik'),
+                                                    ->native(false)
+                                                    ->placeholder('Pilih user')
+                                                    ->live()
+                                                    ->afterStateUpdated(function ($state, Set $set): void {
+                                                        $set('owner_name', User::query()->whereKey($state)->value('name'));
+                                                    })
+                                                    ->afterStateHydrated(function ($component, $state, $record): void {
+                                                        if ($state || ! $record?->owner_name) {
+                                                            return;
+                                                        }
+
+                                                        $matchedId = User::query()
+                                                            ->where('name', $record->owner_name)
+                                                            ->value('id');
+
+                                                        if ($matchedId) {
+                                                            $component->state($matchedId);
+                                                        }
+                                                    }),
+                                                Hidden::make('owner_name'),
                                                 TextInput::make('jabatan_owner')
                                                     ->maxLength(255)
                                                     ->placeholder('Jabatan pemilik'),
@@ -204,6 +229,15 @@ class CompanyForm
                                                     ->maxLength(255)
                                                     ->placeholder('Kantor pajak'),
                                             ]),
+                                    ]),
+                                Section::make('Placeholder Tanda Tangan')
+                                    ->description('Tanda tangan mengikuti Owner. Pilih dokumen tempat tanda tangan itu ditampilkan.')
+                                    ->schema([
+                                        CheckboxList::make('signature_placeholder_types')
+                                            ->label('Jenis Dokumen')
+                                            ->options(SignaturePlaceholderType::class)
+                                            ->columns(1)
+                                            ->columnSpanFull(),
                                     ]),
                             ]),
                         Tabs\Tab::make('Dokumen')

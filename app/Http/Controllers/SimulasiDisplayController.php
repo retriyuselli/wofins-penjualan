@@ -147,7 +147,7 @@ class SimulasiDisplayController extends Controller
 
         $sequenceFormatted = str_pad((string) $sequence, 3, '0', STR_PAD_LEFT);
 
-        $company = Company::with('paymentMethod')->first();
+        $company = Company::with(['paymentMethod', 'owner'])->first();
         $inisialWo = $company?->inisial_wo ?: 'MW';
         $inisialKontrak = $company?->inisial_kontak ?: 'KKP';
 

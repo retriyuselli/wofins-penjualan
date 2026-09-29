@@ -16,7 +16,7 @@
         $companyBankHolder = '{Isi dengan nama pemegang rekening bank perusahaan}';
 
         if (\Illuminate\Support\Facades\Schema::hasTable('companies')) {
-            $company = $company ?? \App\Models\Company::with('paymentMethod')->first();
+            $company = $company ?? \App\Models\Company::with(['paymentMethod', 'owner'])->first();
 
             if ($company?->company_name) {
                 $companyName = $company->company_name;
@@ -569,15 +569,48 @@
         .signature-table {
             width: 100%;
             border-collapse: collapse;
-            border: 1px solid #000;
+            table-layout: fixed;
+            border: none;
         }
 
         .signature-table td {
-            width: 50%;
             text-align: center;
             vertical-align: top;
-            border: 1px solid #000;
-            padding: 10px;
+            border: none;
+            padding: 0;
+        }
+
+        .signature-label {
+            font-weight: bold;
+            padding-bottom: 10px;
+        }
+
+        .signature-slot {
+            height: 68px;
+            vertical-align: bottom;
+        }
+
+        .signature-slot img {
+            height: 55px;
+            width: auto;
+            max-width: 140px;
+            max-height: 55px;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .signature-name {
+            padding-top: 2px;
+        }
+
+        .signature-rule {
+            border-top: 1px solid #000;
+            width: 70%;
+            margin: 2px auto 0;
+        }
+
+        .signature-role {
+            padding-top: 2px;
         }
 
         .sign-space {
