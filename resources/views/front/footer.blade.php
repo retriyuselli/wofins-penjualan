@@ -17,7 +17,6 @@
                 <h3 class="font-semibold mb-4">Produk</h3>
                 <ul class="space-y-2 text-sm text-gray-800">
                     <li><a href="#features" class="hover:text-white transition-colors">Fitur</a></li>
-                    <li><a href="{{ route('harga') }}" class="hover:text-white transition-colors">Harga</a></li>
                     <li><a href="#" class="hover:text-white transition-colors">Integrasi</a></li>
                     <li><a href="#" class="hover:text-white transition-colors">API</a></li>
                 </ul>

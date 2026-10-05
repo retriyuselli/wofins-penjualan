@@ -197,12 +197,6 @@
                     >Produk</a>
                 @endprodukWeb
                 <a
-                    href="{{ route('harga') }}"
-                    class="wf-nav-link {{ $isHarga ? 'is-active' : '' }}"
-                    :class="{ 'is-active': activeNav === 'harga' }"
-                    @if ($isHarga) aria-current="page" @endif
-                >Harga</a>
-                <a
                     href="{{ route('docs.index') }}"
                     class="wf-nav-link {{ $isDocs ? 'is-active' : '' }}"
                     :class="{ 'is-active': activeNav === 'docs' }"
@@ -262,7 +256,6 @@
             @produkWeb
                 <a href="{{ route('product') }}" class="wf-nav-link-mobile {{ $isProduk ? 'is-active' : '' }}" :class="{ 'is-active': activeNav === 'produk' }">Produk</a>
             @endprodukWeb
-            <a href="{{ route('harga') }}" class="wf-nav-link-mobile {{ $isHarga ? 'is-active' : '' }}" :class="{ 'is-active': activeNav === 'harga' }">Harga</a>
             <a href="{{ route('docs.index') }}" class="wf-nav-link-mobile {{ $isDocs ? 'is-active' : '' }}" :class="{ 'is-active': activeNav === 'docs' }">Docs</a>
             <a href="{{ route('kontak') }}" class="wf-nav-link-mobile {{ $isKontak ? 'is-active' : '' }}" :class="{ 'is-active': activeNav === 'kontak' }">Kontak</a>
             <div class="flex flex-col gap-2 pt-2">

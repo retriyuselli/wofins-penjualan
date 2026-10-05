@@ -26,7 +26,7 @@ class EnsureProFeature
         }
 
         $previous = url()->previous();
-        $fallback = route('harga');
+        $fallback = auth()->check() ? route('dashboard') : route('kontak');
         $home = rtrim((string) url('/'), '/');
         $previousNorm = rtrim((string) $previous, '/');
 

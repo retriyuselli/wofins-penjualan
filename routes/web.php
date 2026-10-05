@@ -177,7 +177,7 @@ Route::view('/fitur', 'front.fitur')->name('fitur');
 Route::get('/fitur/{slug}', [FiturDetailController::class, 'show'])
     ->name('fitur.show')
     ->where('slug', 'proyek-wedding|keuangan|rekonsiliasi|nota-dinas|payroll|dokumen-sop|hak-akses');
-Route::view('/harga', 'front.harga')->name('harga');
+Route::get('/harga', fn () => redirect()->route('home'))->name('harga');
 Route::view('/keamanan', 'front.keamanan')->name('keamanan');
 Route::view('/tentang-kami', 'front.tentang')->name('tentang');
 Route::get('/solusi/{slug}', [\App\Http\Controllers\Front\SolusiController::class, 'show'])

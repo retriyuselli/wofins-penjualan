@@ -21,7 +21,6 @@
                 <p class="font-bold text-white mb-3">Produk</p>
                 <ul class="space-y-2 text-sm">
                     <li><a href="{{ route('fitur') }}" class="hover:text-white">Fitur</a></li>
-                    <li><a href="{{ route('harga') }}" class="hover:text-white">Harga</a></li>
                     <li><a href="{{ route('docs.index') }}" class="hover:text-white">Docs</a></li>
                     <li><a href="{{ route('keamanan') }}" class="hover:text-white">Keamanan</a></li>
                 </ul>

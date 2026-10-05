@@ -69,7 +69,6 @@
                     </div>
                     <div class="relative z-[1] flex flex-wrap gap-3">
                         <a href="{{ route('kontak') }}" class="wf-btn-navy px-5 py-2.5 text-sm">Kontak Kami</a>
-                        <a href="{{ route('harga') }}" class="wf-btn-ghost px-5 py-2.5 text-sm">Lihat Harga</a>
                     </div>
                 </div>
             </div>

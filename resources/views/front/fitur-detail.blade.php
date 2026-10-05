@@ -261,10 +261,7 @@
                     </p>
                     <div class="mt-7 flex flex-col sm:flex-row items-center justify-center gap-3">
                         <a href="{{ route('kontak') }}" class="wf-btn-navy inline-flex items-center justify-center px-6 py-3.5 text-sm">
-                            Jadwalkan Demo Gratis
-                        </a>
-                        <a href="{{ route('harga') }}" class="wf-btn-ghost inline-flex items-center justify-center px-6 py-3.5 text-sm">
-                            Lihat Harga
+                            Hubungi Kami
                         </a>
                     </div>
                 </div>
