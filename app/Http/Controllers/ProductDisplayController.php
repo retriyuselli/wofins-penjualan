@@ -125,6 +125,7 @@ class ProductDisplayController extends Controller
             'category',
             'parent',
             'items.vendor',
+            'items.vendor.category',
             'pengurangans',
             'penambahanHarga.vendor',
             'lastEditedBy',
@@ -159,14 +160,144 @@ class ProductDisplayController extends Controller
         return $pdf;
     }
 
+    /**
+     * Translucent tiled stamp so a downloaded offer cannot be reused cleanly.
+     */
+    private function quotationWatermark(string $label): string
+    {
+        if (! function_exists('imagecreatetruecolor') || ! function_exists('imagettftext')) {
+            return '';
+        }
+
+        $font = base_path('vendor/dompdf/dompdf/lib/fonts/DejaVuSans-Bold.ttf');
+        if (! is_file($font)) {
+            return '';
+        }
+
+        $label = trim($label);
+        if ($label === '') {
+            return '';
+        }
+
+        $size = 18;
+        $box = imagettfbbox($size, 0, $font, $label);
+        $textW = abs($box[2] - $box[0]);
+        while ($textW > 820 && $size > 12) {
+            $size--;
+            $box = imagettfbbox($size, 0, $font, $label);
+            $textW = abs($box[2] - $box[0]);
+        }
+
+        $tileW = $textW + 90;
+        $tileH = 160;
+        $tile = imagecreatetruecolor($tileW, $tileH);
+        imagealphablending($tile, false);
+        imagesavealpha($tile, true);
+        $clear = imagecolorallocatealpha($tile, 0, 0, 0, 127);
+        imagefilledrectangle($tile, 0, 0, $tileW, $tileH, $clear);
+        imagealphablending($tile, true);
+        $ink = imagecolorallocatealpha($tile, 11, 31, 58, 90);
+        imagettftext($tile, $size, 0, 40, 95, $ink, $font, $label);
+
+        $rotated = imagerotate($tile, 28, $clear);
+        imagedestroy($tile);
+        if ($rotated === false) {
+            return '';
+        }
+        imagealphablending($rotated, false);
+        imagesavealpha($rotated, true);
+
+        $pageW = 1240;
+        $pageH = 1754;
+        $page = imagecreatetruecolor($pageW, $pageH);
+        imagealphablending($page, false);
+        imagesavealpha($page, true);
+        imagefilledrectangle($page, 0, 0, $pageW, $pageH, $clear);
+        imagealphablending($page, true);
+
+        $rw = imagesx($rotated);
+        $rh = imagesy($rotated);
+        $stepX = (int) max(1, $rw * 0.92);
+        $stepY = (int) max(1, $rh * 0.78);
+        for ($y = -((int) ($rh / 3)); $y < $pageH; $y += $stepY) {
+            for ($x = -((int) ($rw / 3)); $x < $pageW; $x += $stepX) {
+                imagecopy($page, $rotated, $x, $y, 0, 0, $rw, $rh);
+            }
+        }
+        imagedestroy($rotated);
+
+        ob_start();
+        imagepng($page, null, 6);
+        $png = ob_get_clean();
+        imagedestroy($page);
+
+        if (! is_string($png) || $png === '') {
+            return '';
+        }
+
+        return 'data:image/png;base64,'.base64_encode($png);
+    }
+
+    private function ensureProductVisible(Product $product): void
+    {
+        if (! Company::showsProductsOnWeb()) {
+            abort(404);
+        }
+
+        $isPublic = (bool) $product->is_approved
+            && (bool) $product->is_active
+            && (bool) $product->show_on_web;
+        if (! $isPublic) {
+            if (! auth()->check()) {
+                abort(404);
+            }
+
+            Gate::authorize('view', $product);
+        }
+    }
+
     public function show(Product $product)
     {
-        Gate::authorize('view', $product);
+        $this->ensureProductVisible($product);
 
-        $product->load(['category', 'items.vendor']);
-        $product->image_url = $product->image ? Storage::url($product->image) : asset('images/placeholder-product.png');
+        $product->load(['category', 'items.vendor.category']);
+        $product->image_url = $product->image ? Storage::url($product->image) : null;
 
         return view('products.detail', compact('product'));
+    }
+
+    public function cetak(Product $product)
+    {
+        $this->ensureProductVisible($product);
+
+        return view('products.cetak', $this->productDisplayData($product));
+    }
+
+    public function downloadCetakPdf(Product $product)
+    {
+        $this->ensureProductVisible($product);
+
+        $data = $this->productDisplayData($product, forPdf: true);
+        $reference = 'PROD-'.str_pad((string) $product->id, 6, '0', STR_PAD_LEFT);
+        $data['reference'] = $reference;
+        $data['watermarkSrc'] = $this->quotationWatermark(
+            trim(($data['companyName'] ?? '').' · PENAWARAN · '.$reference)
+        );
+
+        $pdf = Pdf::loadView('products.cetak-pdf', $data);
+        $pdf->setPaper('A4', 'portrait');
+        $pdf->setOptions([
+            'dpi' => 96,
+            'defaultFont' => 'DejaVu Sans',
+            'isHtml5ParserEnabled' => true,
+            'isRemoteEnabled' => false,
+            'isPhpEnabled' => false,
+            'isFontSubsettingEnabled' => true,
+        ]);
+
+        $fileName = 'penawaran-'.$product->slug.'-'.now()->format('Ymd').'.pdf';
+
+        return $pdf->download($fileName);
     }
 
     public function details(Product $product, string $action)

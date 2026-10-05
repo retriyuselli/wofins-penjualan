@@ -19,6 +19,7 @@ use App\Observers\OrderObserver;
 use App\Observers\UserObserver;
 use CmsMulti\FilamentClearCache\Facades\FilamentClearCache;
 use Illuminate\Auth\Events\Login;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -174,6 +175,8 @@ class AppServiceProvider extends ServiceProvider
 
             return 1;
         }));
+
+        Blade::if('produkWeb', fn () => Company::showsProductsOnWeb());
         
         FilamentClearCache::addCommand('optimize:clear');
 

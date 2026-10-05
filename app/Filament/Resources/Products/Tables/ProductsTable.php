@@ -24,6 +24,7 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -156,6 +157,17 @@ class ProductsTable
                     ->sortable()
                     ->tooltip(fn (bool $state): string => $state ? 'Product is active' : 'Product is inactive'),
 
+                IconColumn::make('show_on_web')
+                    ->boolean()
+                    ->label('Tampil di web')
+                    ->alignCenter()
+                    ->trueIcon('heroicon-o-globe-alt')
+                    ->falseIcon('heroicon-o-eye-slash')
+                    ->trueColor('success')
+                    ->falseColor('gray')
+                    ->sortable()
+                    ->tooltip(fn (bool $state): string => $state ? 'Tampil di katalog web' : 'Disembunyikan dari katalog web'),
+
                 IconColumn::make('is_approved')
                     ->boolean()
                     ->label('Approved')
@@ -192,6 +204,12 @@ class ProductsTable
                         1 => 'Active',
                         0 => 'Inactive',
                     ]),
+
+                TernaryFilter::make('show_on_web')
+                    ->label('Tampil di web')
+                    ->placeholder('Semua')
+                    ->trueLabel('Tampil di web')
+                    ->falseLabel('Tidak tampil di web'),
 
                 SelectFilter::make('is_approved')
                     ->label('Approved')

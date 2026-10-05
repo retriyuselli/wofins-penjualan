@@ -254,8 +254,14 @@ Route::get('/laporan/expense-ops/html', [ReportController::class, 'generateExpen
 // PRODUCT ROUTES
 // Detail product
 Route::get('/products/{product:slug}', [ProductDisplayController::class, 'show'])
-    ->name('products.show')
-    ->middleware($authNoStore);
+    ->name('products.show');
+
+Route::get('/products/{product:slug}/cetak', [ProductDisplayController::class, 'cetak'])
+    ->name('products.cetak');
+
+Route::get('/products/{product:slug}/cetak/pdf', [ProductDisplayController::class, 'downloadCetakPdf'])
+    ->name('products.cetakPdf')
+    ->middleware('throttle:30,1');
 
 Route::get('/products/{product}/download-pdf', [ProductDisplayController::class, 'downloadPdf'])
     ->name('products.downloadPdf')

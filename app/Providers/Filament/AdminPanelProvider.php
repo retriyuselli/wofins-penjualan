@@ -82,6 +82,7 @@ class AdminPanelProvider extends PanelProvider
                 ProjectDashboard::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
+            ->renderHook('panels::global-search.before', fn () => view('filament.topbar.product-shop'))
             ->renderHook('panels::body.end', fn () => view('filament.inactivity-redirect'))
             ->renderHook('panels::body.end', fn () => view('filament.license-banner'))
             ->renderHook('panels::styles.after', fn () => view('filament.wizard-next-stability'))

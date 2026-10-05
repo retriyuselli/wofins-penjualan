@@ -12,6 +12,7 @@ use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
@@ -30,6 +31,17 @@ class CompanyForm
                         Tabs\Tab::make('Informasi Perusahaan')
                             ->icon(Heroicon::OutlinedPencilSquare)
                             ->schema([
+                                Section::make('Tampilan Web')
+                                    ->schema([
+                                        Toggle::make('show_products_on_web')
+                                            ->label('Tampilkan produk di header')
+                                            ->helperText('Aktifkan agar menu Produk muncul di header situs. Jika dimatikan, halaman katalog publik ikut disembunyikan.')
+                                            ->default(true)
+                                            ->onIcon('heroicon-s-globe-alt')
+                                            ->offIcon('heroicon-s-eye-slash')
+                                            ->onColor('success')
+                                            ->offColor('gray'),
+                                    ]),
                                 Section::make('Informasi Perusahaan')
                                     ->schema([
                                         Grid::make()

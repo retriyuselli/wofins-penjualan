@@ -23,6 +23,7 @@ class Product extends Model
         'product_price', // Penjumlahan dari repeater harga publish dari vendor
         'price',
         'is_active',
+        'show_on_web',
         'pax',
         'pax_akad',
         'description',
@@ -39,6 +40,7 @@ class Product extends Model
 
     protected $casts = [
         'is_active' => 'boolean',
+        'show_on_web' => 'boolean',
         'is_approved' => 'boolean',
         'product_price' => 'integer',
         'pengurangan' => 'integer',
@@ -65,7 +67,7 @@ class Product extends Model
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['name', 'price', 'product_price', 'is_active', 'category_id'])
+            ->logOnly(['name', 'price', 'product_price', 'is_active', 'show_on_web', 'category_id'])
             ->setDescriptionForEvent(fn (string $eventName) => "{$eventName}")
             ->useLogName('product');
     }

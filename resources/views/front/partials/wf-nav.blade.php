@@ -1,10 +1,11 @@
 @php
     $isHome = request()->routeIs('home');
     $isFitur = request()->routeIs('fitur') || request()->routeIs('fitur.show');
+    $isProduk = request()->routeIs('product') || request()->routeIs('products.show');
     $isHarga = request()->routeIs('harga');
     $isDocs = request()->routeIs('docs.*');
     $isKontak = request()->routeIs('kontak');
-    $initialNav = $isFitur ? 'fitur' : ($isHarga ? 'harga' : ($isDocs ? 'docs' : ($isKontak ? 'kontak' : '')));
+    $initialNav = $isFitur ? 'fitur' : ($isProduk ? 'produk' : ($isHarga ? 'harga' : ($isDocs ? 'docs' : ($isKontak ? 'kontak' : ''))));
     $fiturMenus = array_values(config('wofins_features', []));
     $currentFiturSlug = request()->route('slug');
 @endphp
@@ -187,6 +188,14 @@
                     </div>
                 </div>
 
+                @produkWeb
+                    <a
+                        href="{{ route('product') }}"
+                        class="wf-nav-link {{ $isProduk ? 'is-active' : '' }}"
+                        :class="{ 'is-active': activeNav === 'produk' }"
+                        @if ($isProduk) aria-current="page" @endif
+                    >Produk</a>
+                @endprodukWeb
                 <a
                     href="{{ route('harga') }}"
                     class="wf-nav-link {{ $isHarga ? 'is-active' : '' }}"
@@ -250,6 +259,9 @@
                 @endforeach
             </div>
 
+            @produkWeb
+                <a href="{{ route('product') }}" class="wf-nav-link-mobile {{ $isProduk ? 'is-active' : '' }}" :class="{ 'is-active': activeNav === 'produk' }">Produk</a>
+            @endprodukWeb
             <a href="{{ route('harga') }}" class="wf-nav-link-mobile {{ $isHarga ? 'is-active' : '' }}" :class="{ 'is-active': activeNav === 'harga' }">Harga</a>
             <a href="{{ route('docs.index') }}" class="wf-nav-link-mobile {{ $isDocs ? 'is-active' : '' }}" :class="{ 'is-active': activeNav === 'docs' }">Docs</a>
             <a href="{{ route('kontak') }}" class="wf-nav-link-mobile {{ $isKontak ? 'is-active' : '' }}" :class="{ 'is-active': activeNav === 'kontak' }">Kontak</a>

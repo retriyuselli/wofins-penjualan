@@ -12,6 +12,13 @@
                 <div class="hidden md:block">
                     <div class="ml-2 flex items-center space-x-4">
                         @auth
+                            @produkWeb
+                            <a href="{{ route('product') }}"
+                                class="px-3 py-2 rounded-md text-sm font-medium transition duration-300 shrink-0 {{ request()->routeIs('product') || request()->routeIs('products.show') ? 'text-[#0b1f3a] font-semibold' : 'text-gray-700 hover:text-[#0b1f3a]' }}"
+                                style="{{ request()->routeIs('product') || request()->routeIs('products.show') ? 'background:rgba(201,162,39,0.16)' : '' }}">
+                                Produk
+                            </a>
+                            @endprodukWeb
                             <a href="{{ route('profile') }}"
                                 class="px-3 py-2 rounded-md text-sm font-medium transition duration-300 {{ request()->routeIs('profile') || request()->routeIs('profile.*') ? 'text-[#0b1f3a] font-semibold' : 'text-gray-700 hover:text-[#0b1f3a]' }}"
                                 style="{{ request()->routeIs('profile') || request()->routeIs('profile.*') ? 'background:rgba(201,162,39,0.16)' : '' }}">
@@ -50,6 +57,12 @@
                                         class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-blue-600 transition duration-150">Payroll</a>
                                 </div>
                             </div>
+                            @produkWeb
+                            <a href="{{ route('product') }}"
+                                class="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition duration-300 shrink-0 {{ request()->routeIs('product') || request()->routeIs('products.show') ? 'text-blue-600 bg-blue-50' : '' }}">
+                                Produk
+                            </a>
+                            @endprodukWeb
                             <a href="{{ route('harga') }}"
                                 class="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition duration-300 {{ request()->routeIs('harga') ? 'text-blue-600 bg-blue-50' : '' }}">
                                 Harga
@@ -171,6 +184,10 @@
 
                             <!-- Fitur Dropdown for Mobile -->
                             @auth
+                                @produkWeb
+                                <a href="{{ route('product') }}"
+                                    class="block px-4 py-2 text-gray-700 hover:bg-[#f7f4ee] {{ request()->routeIs('product') || request()->routeIs('products.show') ? 'font-semibold text-[#0b1f3a]' : '' }}">Produk</a>
+                                @endprodukWeb
                                 <a href="{{ route('profile') }}"
                                     class="block px-4 py-2 text-gray-700 hover:bg-[#f7f4ee] {{ request()->routeIs('profile') ? 'font-semibold text-[#0b1f3a]' : '' }}"
                                     style="{{ request()->routeIs('profile') || request()->routeIs('profile.*') ? 'background:rgba(201,162,39,0.16)' : '' }}">Dashboard</a>
@@ -203,6 +220,10 @@
                                     </div>
                                 </div>
 
+                                @produkWeb
+                                <a href="{{ route('product') }}"
+                                    class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Produk</a>
+                                @endprodukWeb
                                 <a href="{{ route('harga') }}"
                                     class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Harga</a>
                                 <a href="/docs"

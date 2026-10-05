@@ -154,6 +154,14 @@ class ProductForm
                                         ->offIcon('heroicon-s-x-circle')
                                         ->onColor('success')
                                         ->offColor('danger'),
+                                    Toggle::make('show_on_web')
+                                        ->label('Tampil di web')
+                                        ->helperText('Aktifkan agar paket ini muncul di katalog web. Paket juga harus sudah disetujui.')
+                                        ->default(false)
+                                        ->onIcon('heroicon-s-globe-alt')
+                                        ->offIcon('heroicon-s-eye-slash')
+                                        ->onColor('success')
+                                        ->offColor('gray'),
                                     Toggle::make('is_approved')
                                         ->label('Approval Status')
                                         ->helperText('Setujui atau tolak produk')

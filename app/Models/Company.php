@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
@@ -31,6 +32,7 @@ class Company extends Model
         'postal_code',
         'website',
         'description',
+        'show_products_on_web',
         'logo_url',
         'favicon_url',
         'image_login',
@@ -62,6 +64,7 @@ class Company extends Model
         'npwp_issued_date' => 'date',
         'legal_documents' => 'array',
         'signature_placeholder_types' => 'array',
+        'show_products_on_web' => 'boolean',
     ];
 
     protected static function booted(): void
@@ -76,13 +79,17 @@ class Company extends Model
                 $company->owner_name = $name;
             }
         });
+
+        static::saved(function (): void {
+            Cache::forget('company_show_products_on_web');
+        });
     }
 
 
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['company_name', 'owner_name', 'email', 'phone'])
+            ->logOnly(['company_name', 'owner_name', 'email', 'phone', 'show_products_on_web'])
             ->setDescriptionForEvent(fn (string $eventName) => "{$eventName}")
             ->useLogName('company');
     }
@@ -103,6 +110,7 @@ class Company extends Model
             'company_logo_path',
             'company_favicon_path',
             'company_login_image_path',
+            'company_show_products_on_web',
         ];
     }
 
@@ -111,6 +119,19 @@ class Company extends Model
         foreach (self::brandCacheKeys() as $key) {
             Cache::forget($key);
         }
+    }
+
+    public static function showsProductsOnWeb(): bool
+    {
+        return Cache::remember('company_show_products_on_web', 3600, function () {
+            if (! Schema::hasTable('companies') || ! Schema::hasColumn('companies', 'show_products_on_web')) {
+                return true;
+            }
+
+            $value = static::query()->value('show_products_on_web');
+
+            return $value === null ? true : (bool) $value;
+        });
     }
 
     public function getFaviconPathAttribute(): string
