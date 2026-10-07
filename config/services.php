@@ -35,6 +35,14 @@ return [
         ],
     ],
 
+    'apns' => [
+        'key_id' => env('APNS_KEY_ID'),
+        'team_id' => env('APNS_TEAM_ID'),
+        'bundle_id' => env('APNS_BUNDLE_ID', 'id.wofins.app'),
+        'private_key' => env('APNS_PRIVATE_KEY'),
+        'private_key_path' => env('APNS_PRIVATE_KEY_PATH'),
+    ],
+
     'google' => [
         'client_id' => env('GOOGLE_CLIENT_ID'),
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),

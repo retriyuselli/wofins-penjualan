@@ -9,6 +9,7 @@ use App\Models\Company;
 use App\Models\Document;
 use App\Models\LeaveRequest;
 use App\Models\Order;
+use App\Models\Product;
 use App\Models\User;
 use App\Observers\BankStatementObserver;
 use App\Observers\CompanyObserver;
@@ -16,6 +17,7 @@ use App\Policies\BankReconciliationItemPolicy;
 use App\Observers\DocumentObserver;
 use App\Observers\LeaveRequestObserver;
 use App\Observers\OrderObserver;
+use App\Observers\ProductObserver;
 use App\Observers\UserObserver;
 use CmsMulti\FilamentClearCache\Facades\FilamentClearCache;
 use Illuminate\Auth\Events\Login;
@@ -67,8 +69,9 @@ class AppServiceProvider extends ServiceProvider
         // Register LeaveRequest Observer for auto-filling user_id
         LeaveRequest::observe(LeaveRequestObserver::class);
 
-        // Register Order Observer for tracking last edited by
+        // Register Order Observer for tracking last edited by and project notifications
         Order::observe(OrderObserver::class);
+        Product::observe(ProductObserver::class);
 
         // Register BankStatement Observer for tracking last edited by
         BankStatement::observe(BankStatementObserver::class);

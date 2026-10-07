@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Api\V1\PayrollResource;
 use App\Http\Resources\Api\V1\UserResource;
+use App\Models\DevicePushToken;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rules\Password;
 
@@ -156,5 +158,55 @@ class MeController extends Controller
         return response()->json([
             'data' => $devices,
         ]);
+    }
+
+    public function storePushToken(Request $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+        $data = $request->validate([
+            'token' => ['required', 'string', 'regex:/^[a-fA-F0-9]{64,200}$/'],
+            'environment' => ['required', 'string', 'in:sandbox,production'],
+            'purpose' => ['sometimes', 'string', 'in:alert,live_start,live_update'],
+            'order_id' => ['nullable', 'integer', 'required_if:purpose,live_update'],
+        ]);
+
+        if (! Schema::hasTable('device_push_tokens')) {
+            return response()->json(['message' => 'Push belum tersedia.'], 503);
+        }
+
+        $attributes = [
+            'user_id' => $user->id,
+            'environment' => $data['environment'],
+        ];
+        if (Schema::hasColumn('device_push_tokens', 'purpose')) {
+            $attributes['purpose'] = $data['purpose'] ?? 'alert';
+            $attributes['order_id'] = ($attributes['purpose'] === 'live_update') ? ($data['order_id'] ?? null) : null;
+        }
+
+        DevicePushToken::query()->updateOrCreate(
+            ['token' => strtolower($data['token'])],
+            $attributes
+        );
+
+        return response()->json(['message' => 'Token push tersimpan.']);
+    }
+
+    public function destroyPushToken(Request $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+        $data = $request->validate([
+            'token' => ['required', 'string', 'regex:/^[a-fA-F0-9]{64,200}$/'],
+        ]);
+
+        if (Schema::hasTable('device_push_tokens')) {
+            DevicePushToken::query()
+                ->where('user_id', $user->id)
+                ->where('token', strtolower($data['token']))
+                ->delete();
+        }
+
+        return response()->json(['message' => 'Token push dihapus.']);
     }
 }

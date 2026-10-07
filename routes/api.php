@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\FinanceController;
 use App\Http\Controllers\Api\V1\MeController;
 use App\Http\Controllers\Api\V1\MobileModuleController;
+use App\Http\Controllers\Api\V1\NotificationController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -42,6 +43,14 @@ Route::prefix('v1')->group(function () {
             ->middleware('throttle:5,1')
             ->name('api.v1.me.password');
         Route::get('/me/devices', [MeController::class, 'devices'])->name('api.v1.me.devices');
+        Route::put('/me/push-token', [MeController::class, 'storePushToken'])->name('api.v1.me.push-token.store');
+        Route::delete('/me/push-token', [MeController::class, 'destroyPushToken'])->name('api.v1.me.push-token.destroy');
+
+        Route::get('/notifications', [NotificationController::class, 'index'])
+            ->name('api.v1.notifications.index');
+        Route::post('/notifications/{id}/read', [NotificationController::class, 'read'])
+            ->whereNumber('id')
+            ->name('api.v1.notifications.read');
         Route::get('/me/compensation', [MeController::class, 'compensation'])
             ->middleware('pro.feature:payroll')
             ->name('api.v1.me.compensation');
