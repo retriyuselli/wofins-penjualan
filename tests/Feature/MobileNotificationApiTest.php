@@ -87,6 +87,8 @@ class MobileNotificationApiTest extends TestCase
         $this->assertSame(3, \App\Models\AppNotification::query()->count());
 
         $updated = collect($list->json('data'))->firstWhere('type', 'product_updated');
+        $this->assertMatchesRegularExpression('/^\d{2} \p{L}+ \d{4}, \d{2}\.\d{2}$/u', $updated['created_label']);
+        $this->assertStringNotContainsString('OktoberOktober', $updated['created_label']);
         $this->assertSame(9, $updated['product_id']);
         $this->assertSame('Paket Gold Baru berhasil diperbarui.', $updated['body']);
 

@@ -91,7 +91,7 @@ class NotificationController extends Controller
             'order_id' => $notification->order_id ? (int) $notification->order_id : null,
             'read_at' => optional($notification->read_at)?->toIso8601String(),
             'created_label' => $notification->created_at
-                ? $notification->created_at->timezone(config('app.timezone'))->locale('id')->translatedFormat('d MMM yyyy, HH.mm')
+                ? $notification->created_at->timezone(config('app.timezone'))->locale('id')->translatedFormat('d F Y, H.i')
                 : '',
         ];
     }
