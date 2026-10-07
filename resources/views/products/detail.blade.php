@@ -67,6 +67,16 @@
 
             return trim($html);
         };
+
+        $companyPhone = \Illuminate\Support\Facades\Schema::hasTable('companies')
+            ? \App\Models\Company::query()->value('phone')
+            : null;
+        $tanyaWa = \App\Support\PhoneNumber::waMe(
+            $companyPhone,
+            'Halo, saya ingin tanya paket '.$title.'.'
+        );
+        $tanyaUrl = $tanyaWa ?: route('kontak');
+        $tanyaExternal = filled($tanyaWa);
     @endphp
 
     <div class="wf-page min-h-screen bg-[var(--wf-cream)]">
@@ -128,7 +138,9 @@
                         @endif
 
                         <div class="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                            <a href="{{ route('kontak') }}" class="wf-btn-gold inline-flex w-full items-center justify-center px-5 py-3 text-sm sm:w-auto">
+                            <a href="{{ $tanyaUrl }}"
+                                @if ($tanyaExternal) target="_blank" rel="noopener" @endif
+                                class="wf-btn-gold inline-flex w-full items-center justify-center px-5 py-3 text-sm sm:w-auto">
                                 Tanya paket ini
                             </a>
                             <button type="button" id="wf-share" class="wf-btn-ghost inline-flex w-full items-center justify-center px-5 py-3 text-sm sm:w-auto">
