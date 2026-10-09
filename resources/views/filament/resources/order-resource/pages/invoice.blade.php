@@ -33,9 +33,11 @@
         <!-- Download Buttons -->
         <div class="mt-6 flex flex-wrap justify-end gap-3">
             @php
+                $shareDays = max(1, (int) config('invoice.share_ttl_days', 7));
+                $shareUrl = \App\Http\Controllers\InvoiceOrderController::temporaryShareUrl($order);
                 $whatsappUrl = \App\Support\PhoneNumber::waMe(
                     $order->prospect->phone ?? null,
-                    'Halo, berikut adalah invoice Anda: '.route('invoice.download', ['order' => $order])
+                    'Halo, berikut invoice PDF Anda (tautan berlaku '.$shareDays.' hari): '.$shareUrl
                 );
             @endphp
 

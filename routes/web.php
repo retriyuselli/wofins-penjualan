@@ -191,6 +191,10 @@ Route::get('/pendaftaran', [RegistrationController::class, 'pendaftaran'])->name
 // CONTACT
 Route::view('/kontak', 'front.kontak')->name('kontak');
 
+Route::get('/invoice/{order}/pdf', [InvoiceOrderController::class, 'downloadShared'])
+    ->name('invoice.share')
+    ->middleware(['signed', 'throttle:30,1']);
+
 // INVOICE
 Route::middleware($authNoStore)->group(function () {
     Route::get('/invoice/{order}', [InvoiceOrderController::class, 'show'])

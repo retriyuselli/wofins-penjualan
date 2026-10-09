@@ -73,6 +73,12 @@ return Application::configure(basePath: dirname(__DIR__))
             return response()->redirectToRoute('home')->with('error', 'Method tidak diizinkan untuk halaman ini.');
         });
 
+        $exceptions->render(function (Illuminate\Routing\Exceptions\InvalidSignatureException $e, $request) {
+            if ($request->routeIs('invoice.share')) {
+                return response()->view('invoices.share-expired', status: 403);
+            }
+        });
+
         $exceptions->render(function (Symfony\Component\HttpKernel\Exception\NotFoundHttpException $e, $request) {
             if ($request->expectsJson() || $request->is('api/*')) {
                 return response()->json([

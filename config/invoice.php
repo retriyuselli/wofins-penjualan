@@ -26,6 +26,9 @@ return [
 
     // Payment Information
     'payment_days' => env('INVOICE_PAYMENT_DAYS', 7),
+
+    // Tautan PDF untuk WhatsApp (tanpa login admin)
+    'share_ttl_days' => (int) env('INVOICE_SHARE_TTL_DAYS', 7),
     'currency' => env('INVOICE_CURRENCY', 'IDR'),
     'currency_symbol' => env('INVOICE_CURRENCY_SYMBOL', 'Rp'),
 

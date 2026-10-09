@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 
 class InvoiceOrderController extends Controller
 {
@@ -79,6 +80,27 @@ class InvoiceOrderController extends Controller
         Gate::authorize('view', $order);
 
         return $this->pdfResponse($order, false);
+    }
+
+    /**
+     * Unduh PDF invoice lewat tautan bertanda tangan (WhatsApp), tanpa login.
+     */
+    public function downloadShared(string $order)
+    {
+        $record = Order::query()->where('slug', $order)->firstOrFail();
+
+        return $this->pdfResponse($record, true);
+    }
+
+    public static function temporaryShareUrl(Order $order): string
+    {
+        $days = max(1, (int) config('invoice.share_ttl_days', 7));
+
+        return URL::temporarySignedRoute(
+            'invoice.share',
+            now()->addDays($days),
+            ['order' => $order]
+        );
     }
 
     /**
