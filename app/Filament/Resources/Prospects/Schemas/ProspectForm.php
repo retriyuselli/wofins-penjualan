@@ -61,7 +61,9 @@ class ProspectForm
                                     ]),
 
                                 PhoneNumber::applyInput(
-                                    TextInput::make('phone')->required()
+                                    TextInput::make('phone')
+                                        ->label('Telepon')
+                                        ->required()
                                 ),
 
                                 TextInput::make('address')
@@ -93,7 +95,8 @@ class ProspectForm
                                     ->relationship('user', 'name')
                                     ->searchable()
                                     ->preload()
-                                    ->default(Auth::user()->id)
+                                    ->required()
+                                    ->default(fn (): ?int => Auth::id())
                                     ->helperText('Pilih manajer akun yang bertanggung jawab'),
                             ]),
 

@@ -96,13 +96,26 @@ class ContractTemplateService
             'facilities_heading' => strip_tags($replace($template->facilities_heading)),
             'intro_pihak_pertama' => $replace($template->intro_pihak_pertama),
             'intro_pihak_kedua' => $replace($template->intro_pihak_kedua),
-            'intro_after_parties' => $replace($template->intro_after_parties),
+            'intro_after_parties' => $replace($this->introAfterPartiesWithoutVenue($template->intro_after_parties)),
             'closing_text' => $replace($template->closing_text),
             'contract_date' => strip_tags((string) ($variables['contract_date'] ?? '')),
             'jadwal_acara' => $variables['jadwal_acara'] ?? '',
             'is_spk' => $isSpk,
             'sections' => $sections,
         ];
+    }
+
+    private function introAfterPartiesWithoutVenue(?string $html): string
+    {
+        $html = (string) $html;
+
+        $stripped = preg_replace(
+            '/\s+di\s+(?:<b>)?\{\{prospect_venue\}\}(?:<\/b>)?/u',
+            '',
+            $html,
+        );
+
+        return is_string($stripped) ? $stripped : $html;
     }
 
     /**

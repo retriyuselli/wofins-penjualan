@@ -150,7 +150,6 @@ class ProspectsTable
                 TextColumn::make('total_penawaran')
                     ->label('Total Penawaran')
                     ->numeric()
-                    ->label('')
                     ->prefix('Rp. ')
                     ->sortable()
                     ->alignEnd(),

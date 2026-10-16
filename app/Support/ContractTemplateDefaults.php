@@ -108,7 +108,7 @@ class ContractTemplateDefaults
             'facilities_heading' => 'DENGAN RINCIAN FASILITAS SEBAGAI BERIKUT :',
             'intro_pihak_pertama' => 'Bertindak untuk dan atas nama {{company_name}} beralamat di {{company_address}}, selanjutnya disebut PIHAK PERTAMA.',
             'intro_pihak_kedua' => 'Bertindak untuk dan atas nama diri sendiri, selanjutnya disebut PIHAK KEDUA.',
-            'intro_after_parties' => 'Sehubungan dengan akan diadakannya Pernikahan <b>{{prospect_cpw}} & {{prospect_cpp}}</b> di <b>{{prospect_venue}}</b>, berikut adalah rincian dan ketentuan Paket Pernikahannya :',
+            'intro_after_parties' => 'Sehubungan dengan akan diadakannya Pernikahan <b>{{prospect_cpw}} & {{prospect_cpp}}</b>, berikut adalah rincian dan ketentuan Paket Pernikahannya :',
             'closing_text' => 'Demikianlah Kontrak Kerjasama Paket Pernikahan ini dibuat dalam 2 (dua) rangkap dan ditandatangani oleh kedua belah pihak.',
             'is_system_default' => true,
             'is_active' => true,
