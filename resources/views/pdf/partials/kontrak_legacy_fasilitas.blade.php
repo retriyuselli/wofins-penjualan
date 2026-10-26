@@ -65,7 +65,7 @@
                     <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                         <div style="margin-right: 10px;">
                             <div style="font-weight: normal; overflow: hidden;">
-                                {{ strtoupper($item->vendor->name ?? 'Penambahan Tanpa Nama') }}
+                                {{ \Illuminate\Support\Str::ucfirst(\Illuminate\Support\Str::lower($item->vendor->name ?? 'Penambahan tanpa nama')) }}
                                 @if (! is_null($item->harga_publish) && (float) $item->harga_publish > 0)
                                     <span class="price-right">
                                         Rp {{ number_format((int) $item->harga_publish, 0, ',', '.') }},-

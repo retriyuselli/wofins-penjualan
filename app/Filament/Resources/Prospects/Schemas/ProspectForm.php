@@ -44,33 +44,52 @@ class ProspectForm
                             ]),
 
                         Section::make('Informasi Klien')
-                            ->description('Detail kontak untuk pasangan')
+                            ->description('Nama, telepon, dan alamat masing-masing calon pengantin')
                             ->schema([
                                 Grid::make()
                                     ->columns(['default' => 1, 'md' => 2])
                                     ->schema([
-                                        TextInput::make('name_cpp')
-                                            ->label('Nama Calon Pengantin Pria')
-                                            ->required()
-                                            ->maxLength(255),
-
-                                        TextInput::make('name_cpw')
-                                            ->label('Nama Calon Pengantin Wanita')
-                                            ->required()
-                                            ->maxLength(255),
+                                        Fieldset::make('Calon Pengantin Pria')
+                                            ->extraAttributes(['class' => 'min-w-0 max-w-full'])
+                                            ->schema([
+                                                TextInput::make('name_cpp')
+                                                    ->label('Nama')
+                                                    ->required()
+                                                    ->maxLength(255)
+                                                    ->extraAttributes(['class' => 'min-w-0 max-w-full']),
+                                                PhoneNumber::applyInput(
+                                                    TextInput::make('phone_cpp')
+                                                        ->label('Telepon')
+                                                        ->required()
+                                                        ->extraAttributes(['class' => 'min-w-0 max-w-full'])
+                                                ),
+                                                TextInput::make('address_cpp')
+                                                    ->label('Alamat')
+                                                    ->required()
+                                                    ->maxLength(255)
+                                                    ->extraAttributes(['class' => 'min-w-0 max-w-full']),
+                                            ]),
+                                        Fieldset::make('Calon Pengantin Wanita')
+                                            ->extraAttributes(['class' => 'min-w-0 max-w-full'])
+                                            ->schema([
+                                                TextInput::make('name_cpw')
+                                                    ->label('Nama')
+                                                    ->required()
+                                                    ->maxLength(255)
+                                                    ->extraAttributes(['class' => 'min-w-0 max-w-full']),
+                                                PhoneNumber::applyInput(
+                                                    TextInput::make('phone_cpw')
+                                                        ->label('Telepon')
+                                                        ->required()
+                                                        ->extraAttributes(['class' => 'min-w-0 max-w-full'])
+                                                ),
+                                                TextInput::make('address_cpw')
+                                                    ->label('Alamat')
+                                                    ->required()
+                                                    ->maxLength(255)
+                                                    ->extraAttributes(['class' => 'min-w-0 max-w-full']),
+                                            ]),
                                     ]),
-
-                                PhoneNumber::applyInput(
-                                    TextInput::make('phone')
-                                        ->label('Telepon')
-                                        ->required()
-                                ),
-
-                                TextInput::make('address')
-                                    ->label('Alamat')
-                                    ->required()
-                                    ->maxLength(255)
-                                    ->columnSpanFull(),
                             ]),
                     ])
                     ->columnSpan(['lg' => 2]),

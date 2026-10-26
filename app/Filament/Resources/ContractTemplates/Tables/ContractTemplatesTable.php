@@ -7,9 +7,12 @@ use App\Models\ContractTemplate;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ForceDeleteAction;
+use Filament\Actions\RestoreAction;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 
 class ContractTemplatesTable
@@ -44,12 +47,22 @@ class ContractTemplatesTable
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
             ])
+            ->filters([
+                TrashedFilter::make()
+                    ->label('Terhapus')
+                    ->placeholder('Tanpa terhapus')
+                    ->trueLabel('Termasuk terhapus')
+                    ->falseLabel('Hanya terhapus'),
+            ])
             ->recordActions([
-                EditAction::make(),
+                EditAction::make()
+                    ->label('Ubah')
+                    ->visible(fn (ContractTemplate $record): bool => ! $record->trashed()),
                 Action::make('salin')
                     ->label('Salin')
                     ->icon('heroicon-o-document-duplicate')
                     ->color('gray')
+                    ->visible(fn (ContractTemplate $record): bool => ! $record->trashed())
                     ->action(function (ContractTemplate $record) {
                         $copy = ContractTemplate::copyFrom($record, [
                             'is_system_default' => false,
@@ -63,9 +76,25 @@ class ContractTemplatesTable
 
                         return redirect(ContractTemplateResource::getUrl('edit', ['record' => $copy]));
                     }),
+                RestoreAction::make()
+                    ->label('Pulihkan')
+                    ->successNotificationTitle('Template dipulihkan'),
                 DeleteAction::make()
-                    ->visible(fn (ContractTemplate $record): bool => ! $record->is_system_default)
-                    ->requiresConfirmation(),
+                    ->label('Hapus')
+                    ->visible(fn (ContractTemplate $record): bool => ! $record->is_system_default && ! $record->trashed())
+                    ->requiresConfirmation()
+                    ->modalHeading('Hapus template')
+                    ->modalDescription('Template dipindah ke terhapus. Bisa dipulihkan lewat filter Terhapus.')
+                    ->modalSubmitActionLabel('Ya, hapus')
+                    ->successNotificationTitle('Template dipindah ke terhapus'),
+                ForceDeleteAction::make()
+                    ->label('Hapus permanen')
+                    ->visible(fn (ContractTemplate $record): bool => ! $record->is_system_default && $record->trashed())
+                    ->requiresConfirmation()
+                    ->modalHeading('Hapus permanen')
+                    ->modalDescription('Template dan klausulnya hilang permanen.')
+                    ->modalSubmitActionLabel('Ya, hapus permanen')
+                    ->successNotificationTitle('Template dihapus permanen'),
             ])
             ->defaultSort('id')
             ->emptyStateHeading('Belum ada template kontrak')

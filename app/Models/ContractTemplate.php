@@ -6,9 +6,11 @@ use App\Support\ContractTemplateDefaults;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ContractTemplate extends Model
 {
+    use SoftDeletes;
     protected $fillable = [
         'company_id',
         'name',
@@ -20,6 +22,8 @@ class ContractTemplate extends Model
         'intro_pihak_kedua',
         'intro_after_parties',
         'closing_text',
+        'signature_place',
+        'signatures',
         'is_system_default',
         'is_active',
     ];
@@ -29,12 +33,19 @@ class ContractTemplate extends Model
         return [
             'is_system_default' => 'boolean',
             'is_active' => 'boolean',
+            'signatures' => 'array',
         ];
     }
 
     protected static function booted(): void
     {
         static::saving(function (ContractTemplate $template): void {
+            if ($template->isDirty('intro_after_parties') || $template->exists === false) {
+                $template->intro_after_parties = ContractTemplateDefaults::tidyIntroAfterParties(
+                    $template->intro_after_parties,
+                );
+            }
+
             if ($template->is_system_default) {
                 static::query()
                     ->whereKeyNot($template->getKey() ?: 0)
@@ -49,6 +60,17 @@ class ContractTemplate extends Model
                     ->where('is_active', true)
                     ->update(['is_active' => false]);
             }
+        });
+
+        static::deleted(function (ContractTemplate $template): void {
+            if ($template->isForceDeleting()) {
+                return;
+            }
+
+            $template->newQueryWithoutScopes()
+                ->whereKey($template->getKey())
+                ->update(['is_active' => false]);
+            $template->is_active = false;
         });
     }
 
@@ -71,7 +93,7 @@ class ContractTemplate extends Model
     {
         $source->loadMissing('sections');
 
-        $copy = $source->replicate(['is_system_default']);
+        $copy = $source->replicate(['is_system_default', 'deleted_at']);
         $copy->fill(array_merge([
             'is_system_default' => false,
             'is_active' => true,

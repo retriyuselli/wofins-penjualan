@@ -110,6 +110,8 @@ class ContractTemplateDefaults
             'intro_pihak_kedua' => 'Bertindak untuk dan atas nama diri sendiri, selanjutnya disebut PIHAK KEDUA.',
             'intro_after_parties' => 'Sehubungan dengan akan diadakannya Pernikahan <b>{{prospect_cpw}} & {{prospect_cpp}}</b>, berikut adalah rincian dan ketentuan Paket Pernikahannya :',
             'closing_text' => 'Demikianlah Kontrak Kerjasama Paket Pernikahan ini dibuat dalam 2 (dua) rangkap dan ditandatangani oleh kedua belah pihak.',
+            'signature_place' => '{{company_city}}, {{contract_date_short}}',
+            'signatures' => self::legacySignatures(),
             'is_system_default' => true,
             'is_active' => true,
         ];
@@ -250,8 +252,58 @@ class ContractTemplateDefaults
             'intro_pihak_kedua' => 'Dalam hal ini bertindak selaku klien paket pernikahan, selanjutnya disebut PIHAK KEDUA.',
             'intro_after_parties' => '<p>Pihak Pertama dan Pihak Kedua menerangkan dahulu hal-hal sebagai berikut:</p><ol><li>Pihak Pertama adalah pihak yang membantu pelaksanaan acara pernikahan.</li><li>Jangka waktu pelayanan dimulai sejak diterbitkannya invoice setelah dibayarkannya DP dan ditandatanganinya surat perjanjian ini hingga selesai pelaksanaan pernikahan.</li><li>Pihak Pertama menawarkan jasa paket {{product_name}} pada Pihak Kedua senilai {{package_price}}. Pelaksanaan acara sesuai jadwal pada Pasal 2.</li><li>Pihak Kedua bersedia menerima penawaran dari Pihak Pertama dengan segala rinciannya.</li></ol><p>Untuk pelaksanaan perjanjian, Pihak Pertama dan Pihak Kedua sepakat untuk bekerjasama dalam perjanjian ini dengan syarat-syarat dan ketentuan sebagai berikut:</p>',
             'closing_text' => '',
+            'signature_place' => '{{company_city}}, {{contract_date_short}}',
+            'signatures' => self::spkSignatures(),
             'is_system_default' => false,
             'is_active' => true,
+        ];
+    }
+
+    /**
+     * @return list<array{label: string, name: string, role: string, stamp: bool}>
+     */
+    public static function spkSignatures(): array
+    {
+        return [
+            [
+                'label' => 'Direktur',
+                'name' => '{{owner_name}}',
+                'role' => '',
+                'stamp' => true,
+            ],
+            [
+                'label' => 'Calon Pengantin',
+                'name' => '{{prospect_cpw}}',
+                'role' => '',
+                'stamp' => false,
+            ],
+        ];
+    }
+
+    /**
+     * @return list<array{label: string, name: string, role: string, stamp: bool}>
+     */
+    public static function legacySignatures(): array
+    {
+        return [
+            [
+                'label' => 'Menyetujui,',
+                'name' => '{{name_ttd}}',
+                'role' => '{{title_ttd}}',
+                'stamp' => false,
+            ],
+            [
+                'label' => "Mengetahui,\n{{company_name}}",
+                'name' => '{{owner_name}}',
+                'role' => '{{owner_position}}',
+                'stamp' => true,
+            ],
+            [
+                'label' => '',
+                'name' => '{{account_manager}}',
+                'role' => 'Account Manager',
+                'stamp' => false,
+            ],
         ];
     }
 
@@ -315,7 +367,7 @@ class ContractTemplateDefaults
                 'title' => 'Pasal 9',
                 'keterangan' => 'Wanprestasi',
                 'is_enabled' => true,
-                'body' => '<ol><li>Apabila dalam pembayaran sebagaimana tersebut pada Pasal 6 Pihak Kedua tidak dapat memenuhi kewajiban (wanprestasi) untuk melakukan pembayaran sesuai dengan jadwal yang telah ditentukan dan disertai tidak ada kepastian pembayaran setelah 3 hari dikonfirmasi sejak jatuh tempo, maka Pihak Kedua dianggap telah melakukan pembatalan secara sepihak dan Pihak Pertama berhak memberhentikan segala pemberian service/fasilitas.</li><li>Apabila Pihak Pertama di dalam pelaksanaan perjanjian ini tidak memenuhi kewajibannya sebagaimana yang tersebut pada Pasal 4 kepada Pihak Kedua, maka Pihak Pertama dianggap telah melakukan pembatalan secara sepihak dan wajib memberikan ganti rugi kepada Pihak Kedua (apabila muncul kerugian).</li><li>Pihak Kedua bersedia membuat surat pernyataan menerima resiko apabila jumlah tamu 175% dari kapasitas gedung (acara tidak maksimal).</li></ol>',
+                'body' => '<ol><li>Apabila dalam pembayaran sebagaimana tersebut pada Pasal 7 Pihak Kedua tidak dapat memenuhi kewajiban (wanprestasi) untuk melakukan pembayaran sesuai dengan jadwal yang telah ditentukan dan disertai tidak ada kepastian pembayaran setelah 3 hari dikonfirmasi sejak jatuh tempo, maka Pihak Kedua dianggap telah melakukan pembatalan secara sepihak dan Pihak Pertama berhak memberhentikan segala pemberian service/fasilitas.</li><li>Apabila Pihak Pertama di dalam pelaksanaan perjanjian ini tidak memenuhi kewajibannya sebagaimana yang tersebut pada Pasal 3 kepada Pihak Kedua, maka Pihak Pertama dianggap telah melakukan pembatalan secara sepihak dan wajib memberikan ganti rugi kepada Pihak Kedua (apabila muncul kerugian).</li><li>Pihak Kedua bersedia membuat surat pernyataan menerima resiko apabila jumlah tamu 175% dari kapasitas gedung (acara tidak maksimal).</li></ol>',
             ],
             [
                 'key' => 'pasal_10_penutup',
@@ -325,6 +377,69 @@ class ContractTemplateDefaults
                 'body' => '<p>Demikian surat perjanjian {{company_name}} ini dibuat dan ditandatangani oleh kedua pihak.</p>',
             ],
         ];
+    }
+
+    /**
+     * Hapus "di {{prospect_venue}}" dari paragraf setelah identitas pihak,
+     * termasuk tag <b>/<strong> dari RichEditor, lalu rapikan sisa kalimat SPK lama.
+     */
+    public static function tidyIntroAfterParties(?string $html): string
+    {
+        $html = (string) $html;
+        if ($html === '') {
+            return '';
+        }
+
+        $stripped = preg_replace(
+            '/(?:\s|&nbsp;)+di(?:\s|&nbsp;)+(?:<(?:b|strong)(?:\s[^>]*)?>)?\{\{prospect_venue\}\}(?:<\/(?:b|strong)>)?/iu',
+            '',
+            $html,
+        );
+        $html = is_string($stripped) ? $stripped : $html;
+
+        $html = str_replace(
+            'pada Pihak Kedua. Acara diadakan. Acara pada tanggal {{akad_date}} senilai {{package_price}}.',
+            'pada Pihak Kedua senilai {{package_price}}. Pelaksanaan acara sesuai jadwal pada Pasal 2.',
+            $html,
+        );
+
+        $collapsed = preg_replace('/[ \t]{2,}/u', ' ', $html);
+
+        return is_string($collapsed) ? $collapsed : $html;
+    }
+
+    public static function tidySectionBody(?string $html): string
+    {
+        $html = (string) $html;
+        if ($html === '') {
+            return '';
+        }
+
+        $html = str_replace(
+            'sebagaimana tersebut pada Pasal 6 Pihak Kedua',
+            'sebagaimana tersebut pada Pasal 7 Pihak Kedua',
+            $html,
+        );
+        $html = str_replace(
+            'sebagaimana yang tersebut pada Pasal 4 kepada Pihak Kedua',
+            'sebagaimana yang tersebut pada Pasal 3 kepada Pihak Kedua',
+            $html,
+        );
+
+        return $html;
+    }
+
+    public static function displayProductName(?string $name): string
+    {
+        $name = trim((string) $name);
+        if ($name === '') {
+            return '-';
+        }
+
+        $name = str_replace('_', ' ', $name);
+        $collapsed = preg_replace('/\s+/u', ' ', $name);
+
+        return is_string($collapsed) && $collapsed !== '' ? $collapsed : $name;
     }
 
     /**
@@ -342,8 +457,16 @@ class ContractTemplateDefaults
             '{{owner_position}}',
             '{{nomor_surat}}',
             '{{contract_date}}',
+            '{{contract_date_short}}',
+            '{{name_ttd}}',
+            '{{title_ttd}}',
+            '{{account_manager}}',
             '{{prospect_cpw}}',
             '{{prospect_cpp}}',
+            '{{prospect_phone_cpw}}',
+            '{{prospect_phone_cpp}}',
+            '{{prospect_address_cpw}}',
+            '{{prospect_address_cpp}}',
             '{{prospect_venue}}',
             '{{event_name}}',
             '{{product_name}}',

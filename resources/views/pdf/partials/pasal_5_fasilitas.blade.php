@@ -76,7 +76,7 @@
                 @foreach ($penambahanItems as $item)
                     <li>
                         <div style="overflow: hidden;">
-                            {{ strtoupper($item->vendor->name ?? 'Penambahan') }}
+                            {{ \Illuminate\Support\Str::ucfirst(\Illuminate\Support\Str::lower($item->vendor->name ?? 'Penambahan')) }}
                             <span class="price-right">
                                 Rp {{ number_format((int) $item->harga_publish, 0, ',', '.') }},-
                             </span>

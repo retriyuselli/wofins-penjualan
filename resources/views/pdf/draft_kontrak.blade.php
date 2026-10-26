@@ -25,7 +25,7 @@
                 $companyAddress = $company->address;
             }
             if ($company?->phone) {
-                $companyPhone = $company->phone;
+                $companyPhone = \App\Support\PhoneNumber::display($company->phone);
             }
             if ($company?->email) {
                 $companyEmail = $company->email;
@@ -190,11 +190,22 @@
             text-transform: uppercase;
         }
 
+        .pasal-unit {
+            page-break-inside: auto;
+        }
+
         .pasal-heading {
             text-align: center;
             margin-top: 14px;
             margin-bottom: 8px;
             text-transform: none;
+            page-break-after: avoid;
+            page-break-inside: avoid;
+        }
+
+        .pasal-unit > .pasal5-intro,
+        .pasal-unit > .facility-list {
+            page-break-before: avoid;
         }
 
         .pasal-nomor,
@@ -561,7 +572,7 @@
 
         /* Signature Section */
         .signature-section {
-            margin-top: 40px;
+            margin-top: 18px;
             width: 100%;
             page-break-inside: avoid;
         }

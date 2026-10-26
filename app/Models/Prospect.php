@@ -19,7 +19,11 @@ class Prospect extends Model
         'name_cpp',
         'name_cpw',
         'address',
+        'address_cpp',
+        'address_cpw',
         'phone',
+        'phone_cpp',
+        'phone_cpw',
         'date_lamaran',
         'time_lamaran',
         'venue_lamaran',
@@ -157,6 +161,11 @@ class Prospect extends Model
     {
         parent::boot();
 
+        static::saving(function (Prospect $prospect): void {
+            $prospect->phone = $prospect->phone_cpw ?: $prospect->phone_cpp ?: $prospect->phone;
+            $prospect->address = $prospect->address_cpw ?: $prospect->address_cpp ?: $prospect->address;
+        });
+
         // Prevent deletion if prospect has associated orders
         static::deleting(function ($prospect) {
             if ($prospect->orders()->exists()) {
@@ -169,7 +178,7 @@ class Prospect extends Model
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['name_event', 'name_cpp', 'name_cpw', 'phone', 'date_akad', 'date_resepsi', 'date_lamaran', 'date_pengajian', 'date_ngunduh_mantu', 'venue'])
+            ->logOnly(['name_event', 'name_cpp', 'name_cpw', 'phone', 'phone_cpp', 'phone_cpw', 'address', 'address_cpp', 'address_cpw', 'date_akad', 'date_resepsi', 'date_lamaran', 'date_pengajian', 'date_ngunduh_mantu', 'venue'])
             ->setDescriptionForEvent(fn (string $eventName) => "{$eventName}")
             ->useLogName('prospect');
     }
@@ -197,6 +206,20 @@ class Prospect extends Model
     public function product()
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function phoneFor(string $side): ?string
+    {
+        $specific = $side === 'cpp' ? $this->phone_cpp : $this->phone_cpw;
+
+        return filled($specific) ? $specific : $this->phone;
+    }
+
+    public function addressFor(string $side): ?string
+    {
+        $specific = $side === 'cpp' ? $this->address_cpp : $this->address_cpw;
+
+        return filled($specific) ? $specific : $this->address;
     }
 
     public function user(): BelongsTo

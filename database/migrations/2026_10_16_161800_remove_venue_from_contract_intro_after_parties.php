@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\ContractTemplateDefaults;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -18,13 +19,9 @@ return new class extends Migration
             ->get();
 
         foreach ($rows as $row) {
-            $updated = preg_replace(
-                '/\s+di\s+(?:<b>)?\{\{prospect_venue\}\}(?:<\/b>)?/u',
-                '',
-                (string) $row->intro_after_parties,
-            );
+            $updated = ContractTemplateDefaults::tidyIntroAfterParties((string) $row->intro_after_parties);
 
-            if (! is_string($updated) || $updated === $row->intro_after_parties) {
+            if ($updated === $row->intro_after_parties) {
                 continue;
             }
 

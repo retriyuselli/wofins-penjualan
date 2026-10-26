@@ -9,6 +9,7 @@ use App\Models\SimulasiProduk;
 use App\Models\User;
 use App\Support\BankAccount;
 use App\Support\ContractTemplateDefaults;
+use App\Support\PhoneNumber;
 use App\Support\Rupiah;
 use App\Support\SafeHtml;
 use Carbon\Carbon;
@@ -51,6 +52,8 @@ class ContractTemplateService
      *     intro_pihak_kedua: string,
      *     intro_after_parties: string,
      *     closing_text: string,
+     *     signature_place: string,
+     *     signatures: list<array{label: string, name: string, role: string, stamp: bool}>,
      *     sections: list<array{key: string, title: string, keterangan: ?string, html: string}>
      * }
      */
@@ -76,9 +79,10 @@ class ContractTemplateService
                 continue;
             }
 
-            $html = $replace($section->body);
+            $body = ContractTemplateDefaults::tidySectionBody($section->body);
+            $html = $replace($body);
             if ($section->key === 'pasal_2_waktu') {
-                $html = $replace($this->pasal2OpeningHtml($section->body)).($variables['jadwal_acara'] ?? '');
+                $html = $replace($this->pasal2OpeningHtml($body)).($variables['jadwal_acara'] ?? '');
             }
 
             $sections[] = [
@@ -96,26 +100,15 @@ class ContractTemplateService
             'facilities_heading' => strip_tags($replace($template->facilities_heading)),
             'intro_pihak_pertama' => $replace($template->intro_pihak_pertama),
             'intro_pihak_kedua' => $replace($template->intro_pihak_kedua),
-            'intro_after_parties' => $replace($this->introAfterPartiesWithoutVenue($template->intro_after_parties)),
+            'intro_after_parties' => $replace(ContractTemplateDefaults::tidyIntroAfterParties($template->intro_after_parties)),
             'closing_text' => $replace($template->closing_text),
+            'signature_place' => strip_tags($replace($template->signature_place ?: '{{company_city}}, {{contract_date_short}}')),
+            'signatures' => $this->renderSignatures($template, $isSpk, $replace),
             'contract_date' => strip_tags((string) ($variables['contract_date'] ?? '')),
             'jadwal_acara' => $variables['jadwal_acara'] ?? '',
             'is_spk' => $isSpk,
             'sections' => $sections,
         ];
-    }
-
-    private function introAfterPartiesWithoutVenue(?string $html): string
-    {
-        $html = (string) $html;
-
-        $stripped = preg_replace(
-            '/\s+di\s+(?:<b>)?\{\{prospect_venue\}\}(?:<\/b>)?/u',
-            '',
-            $html,
-        );
-
-        return is_string($stripped) ? $stripped : $html;
     }
 
     /**
@@ -167,17 +160,31 @@ class ContractTemplateService
             'company_name' => e($company?->company_name ?? config('app.name')),
             'company_address' => e($company?->address ?? '-'),
             'company_email' => e($company?->email ?? '-'),
-            'company_phone' => e($company?->phone ?? '-'),
+            'company_phone' => e(PhoneNumber::display($company?->phone)),
             'company_city' => e($company?->city ?? 'Palembang'),
             'owner_name' => e($company?->owner_name ?? '-'),
             'owner_position' => e($company?->jabatan_owner ?? '-'),
             'nomor_surat' => e($nomorSurat),
             'contract_date' => e($contractDate),
+            'contract_date_short' => e(
+                ($record->created_at ?? Carbon::now('Asia/Jakarta'))
+                    ->copy()
+                    ->setTimezone('Asia/Jakarta')
+                    ->locale('id')
+                    ->translatedFormat('d F Y')
+            ),
+            'name_ttd' => e(trim((string) ($record->name_ttd ?? ''))),
+            'title_ttd' => e(trim((string) ($record->title_ttd ?? ''))),
+            'account_manager' => e((string) ($record->user?->name ?: 'Account Manager')),
             'prospect_cpw' => e($prospect?->name_cpw ?? '...'),
             'prospect_cpp' => e($prospect?->name_cpp ?? '...'),
+            'prospect_phone_cpw' => e(PhoneNumber::display($prospect?->phoneFor('cpw'))),
+            'prospect_phone_cpp' => e(PhoneNumber::display($prospect?->phoneFor('cpp'))),
+            'prospect_address_cpw' => e($prospect?->addressFor('cpw') ?: '-'),
+            'prospect_address_cpp' => e($prospect?->addressFor('cpp') ?: '-'),
             'prospect_venue' => e($prospect?->venue ?? '...'),
             'event_name' => e($prospect?->name_event ?? '-'),
-            'product_name' => e($record->product?->name ?? '-'),
+            'product_name' => e(ContractTemplateDefaults::displayProductName($record->product?->name)),
             'akad_date' => e($jadwal['akad_date']),
             'akad_time' => e($jadwal['akad_time']),
             'lamaran_date' => e($jadwal['lamaran_date']),
@@ -192,7 +199,7 @@ class ContractTemplateService
             'bank_account' => e(BankAccount::digits($companyBankAccount) ?? (string) $companyBankAccount),
             'bank_holder' => e($companyBankHolder),
             'finance_name' => e($financeUser?->name ?? 'Finance'),
-            'finance_phone' => e($financeUser?->phone_number ?? '-'),
+            'finance_phone' => e(PhoneNumber::display($financeUser?->phone_number)),
         ];
     }
 
@@ -298,7 +305,7 @@ class ContractTemplateService
 
                 $template->update(['intro_after_parties' => $intro]);
 
-                foreach (['pasal_2_waktu', 'pasal_6_biaya'] as $key) {
+                foreach (['pasal_2_waktu', 'pasal_6_biaya', 'pasal_9_wanprestasi'] as $key) {
                     if (! isset($sectionBodies[$key])) {
                         continue;
                     }
@@ -346,6 +353,69 @@ class ContractTemplateService
             ->with('sections')
             ->get()
             ->first(fn (ContractTemplate $template): bool => $this->isSpkTemplate($template));
+    }
+
+    /**
+     * @param  callable(?string): string  $replace
+     * @return list<array{label: string, name: string, role: string, stamp: bool}>
+     */
+    private function renderSignatures(ContractTemplate $template, bool $isSpk, callable $replace): array
+    {
+        $blocks = $template->signatures;
+        if (! is_array($blocks) || $blocks === []) {
+            $blocks = $isSpk
+                ? ContractTemplateDefaults::spkSignatures()
+                : ContractTemplateDefaults::legacySignatures();
+        }
+
+        $plain = function (?string $text) use ($replace): string {
+            $html = $replace($text);
+            $text = html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+            return trim(preg_replace('/[ \t]+/u', ' ', $text) ?? $text);
+        };
+
+        $rendered = [];
+        $blockList = array_slice(array_values($blocks), 0, 3);
+        $titleTtd = $plain('{{title_ttd}}');
+        $nameTtd = $plain('{{name_ttd}}');
+
+        foreach ($blockList as $block) {
+            if (! is_array($block)) {
+                continue;
+            }
+
+            $nameTemplate = (string) ($block['name'] ?? '');
+            $isClientColumn = str_contains($nameTemplate, '{{prospect_cpw}}')
+                || str_contains($nameTemplate, '{{prospect_cpp}}')
+                || str_contains($nameTemplate, '{{name_ttd}}')
+                || count($blockList) === 1;
+
+            $name = $plain($nameTemplate);
+            if ($name === '') {
+                $name = $nameTtd !== '' ? $nameTtd : $plain('{{prospect_cpw}}');
+            }
+
+            $label = $plain($block['label'] ?? '');
+            $role = $plain($block['role'] ?? '');
+            if ($isClientColumn && $titleTtd !== '') {
+                if ($label === '') {
+                    $label = $titleTtd;
+                }
+                if ($role === '') {
+                    $role = $titleTtd;
+                }
+            }
+
+            $rendered[] = [
+                'label' => $label,
+                'name' => $name !== '' ? $name : '....................',
+                'role' => $role,
+                'stamp' => (bool) ($block['stamp'] ?? false),
+            ];
+        }
+
+        return $rendered;
     }
 
     private function pasal2OpeningHtml(?string $body): string

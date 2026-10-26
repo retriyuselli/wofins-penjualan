@@ -22,6 +22,7 @@ class ListContractTemplates extends ListRecords
                 ->label('Salin dari default')
                 ->icon('heroicon-o-document-duplicate')
                 ->color('gray')
+                ->extraAttributes(['class' => 'w-full sm:w-auto'])
                 ->action(function () {
                     $source = app(ContractTemplateService::class)->ensureSystemDefault();
                     $company = Company::query()->first();
@@ -43,24 +44,27 @@ class ListContractTemplates extends ListRecords
                 ->label('Salin dari SPK')
                 ->icon('heroicon-o-document-text')
                 ->color('gray')
+                ->extraAttributes(['class' => 'w-full sm:w-auto'])
                 ->action(function () {
                     $company = Company::query()->first();
                     $copy = ContractTemplate::makeFromSpk([
                         'company_id' => $company?->id,
                         'is_system_default' => false,
-                        'is_active' => true,
+                        'is_active' => false,
                         'name' => 'SPK '.($company?->company_name ?: 'Perusahaan'),
                     ]);
 
                     Notification::make()
                         ->title('Template SPK dibuat')
-                        ->body('Layout mengikuti kontrak sekarang. Default/global tidak diubah.')
+                        ->body('Belum diaktifkan. PDF tetap memakai template aktif yang lama sampai Anda menyalakan Aktif.')
                         ->success()
                         ->send();
 
                     return redirect(ContractTemplateResource::getUrl('edit', ['record' => $copy]));
                 }),
-            CreateAction::make(),
+            CreateAction::make()
+                ->label('Buat template')
+                ->extraAttributes(['class' => 'w-full sm:w-auto']),
         ];
     }
 }

@@ -96,25 +96,41 @@ class ProspectsTable
                 TextColumn::make('name_cpp')
                     ->label('Nama Pengantin Pria')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->description(fn (?Prospect $record): string => $record
+                        ? trim(PhoneNumber::display($record->phoneFor('cpp')).' · '.($record->addressFor('cpp') ?: '-'), ' ·')
+                        : ''),
 
                 TextColumn::make('name_cpw')
                     ->label('Nama Pengantin Wanita')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->description(fn (?Prospect $record): string => $record
+                        ? trim(PhoneNumber::display($record->phoneFor('cpw')).' · '.($record->addressFor('cpw') ?: '-'), ' ·')
+                        : ''),
 
-                TextColumn::make('address')
-                    ->label('Alamat')
+                TextColumn::make('address_cpp')
+                    ->label('Alamat pria')
                     ->searchable()
-                    ->toggleable()
+                    ->toggleable(isToggledHiddenByDefault: true)
                     ->wrap(),
 
-                TextColumn::make('phone')
-                    ->label('Telepon')
+                TextColumn::make('address_cpw')
+                    ->label('Alamat wanita')
                     ->searchable()
-                    ->copyable()
-                    ->copyMessage('Nomor telepon berhasil disalin')
-                    ->copyMessageDuration(1500)
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->wrap(),
+
+                TextColumn::make('phone_cpp')
+                    ->label('Telepon pria')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->formatStateUsing(fn (?string $state) => PhoneNumber::display($state)),
+
+                TextColumn::make('phone_cpw')
+                    ->label('Telepon wanita')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true)
                     ->formatStateUsing(fn (?string $state) => PhoneNumber::display($state)),
 
                 TextColumn::make('date_lamaran')

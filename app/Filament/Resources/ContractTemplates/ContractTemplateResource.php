@@ -12,7 +12,9 @@ use App\Models\ContractTemplate;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Facades\Auth;
 
 class ContractTemplateResource extends Resource
@@ -64,6 +66,14 @@ class ContractTemplateResource extends Resource
         return $user && method_exists($user, 'hasRole') && $user->hasRole(['super_admin', 'admin']);
     }
 
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->withoutGlobalScopes([
+                SoftDeletingScope::class,
+            ]);
+    }
+
     public static function canDelete(Model $record): bool
     {
         if ($record instanceof ContractTemplate && $record->is_system_default) {
@@ -71,6 +81,15 @@ class ContractTemplateResource extends Resource
         }
 
         return parent::canDelete($record);
+    }
+
+    public static function canForceDelete(Model $record): bool
+    {
+        if ($record instanceof ContractTemplate && $record->is_system_default) {
+            return false;
+        }
+
+        return parent::canForceDelete($record);
     }
 
     public static function getNavigationBadgeTooltip(): ?string

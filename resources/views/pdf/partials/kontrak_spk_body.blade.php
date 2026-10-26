@@ -44,8 +44,16 @@
             <td class="num"></td>
             <td class="label">Alamat</td>
             <td class="separator">:</td>
-            <td>{{ $prospect->address ?? '-' }}</td>
+            <td>{{ $prospect?->addressFor('cpw') ?: '-' }}</td>
         </tr>
+        @if (filled($prospect?->phoneFor('cpw')))
+            <tr>
+                <td class="num"></td>
+                <td class="label">Telepon</td>
+                <td class="separator">:</td>
+                <td>{{ \App\Support\PhoneNumber::display($prospect->phoneFor('cpw')) }}</td>
+            </tr>
+        @endif
         <tr>
             <td class="num"></td>
             <td class="label">Status</td>
@@ -62,8 +70,16 @@
             <td class="num"></td>
             <td class="label">Alamat</td>
             <td class="separator">:</td>
-            <td>{{ $prospect->address ?? '-' }}</td>
+            <td>{{ $prospect?->addressFor('cpp') ?: '-' }}</td>
         </tr>
+        @if (filled($prospect?->phoneFor('cpp')))
+            <tr>
+                <td class="num"></td>
+                <td class="label">Telepon</td>
+                <td class="separator">:</td>
+                <td>{{ \App\Support\PhoneNumber::display($prospect->phoneFor('cpp')) }}</td>
+            </tr>
+        @endif
         <tr>
             <td class="num"></td>
             <td class="label">Status</td>
@@ -93,12 +109,14 @@
         }
     @endphp
     @foreach ($preambleSections as $section)
-        @include('pdf.partials.pasal_heading', [
-            'nomor' => $section['title'] ?? '',
-            'keterangan' => $section['keterangan'] ?? null,
-        ])
-        <div class="facility-list">
-            {!! $section['html'] !!}
+        <div class="pasal-unit">
+            @include('pdf.partials.pasal_heading', [
+                'nomor' => $section['title'] ?? '',
+                'keterangan' => $section['keterangan'] ?? null,
+            ])
+            <div class="facility-list">
+                {!! $section['html'] !!}
+            </div>
         </div>
     @endforeach
 
@@ -143,29 +161,33 @@
         );
     @endphp
 
-    @include('pdf.partials.pasal_heading', [
-        'nomor' => $contract['facilities_heading'] ?? 'Pasal 5',
-        'keterangan' => null,
-    ])
-    <p class="pasal5-intro">
-        Berikut adalah Fasilitas dari kesepakatan yang telah dilakukan antara lain :
-    </p>
-    <div class="facility-list">
-        @include('pdf.partials.pasal_5_fasilitas', [
-            'items' => $items,
-            'product' => $product,
-            'prospect' => $prospect,
-            'company' => $company ?? null,
+    <div class="pasal-unit">
+        @include('pdf.partials.pasal_heading', [
+            'nomor' => $contract['facilities_heading'] ?? 'Pasal 5',
+            'keterangan' => null,
         ])
+        <p class="pasal5-intro">
+            Berikut adalah Fasilitas dari kesepakatan yang telah dilakukan antara lain :
+        </p>
+        <div class="facility-list">
+            @include('pdf.partials.pasal_5_fasilitas', [
+                'items' => $items,
+                'product' => $product,
+                'prospect' => $prospect,
+                'company' => $company ?? null,
+            ])
+        </div>
     </div>
 
     @foreach ($termSections as $section)
-        @include('pdf.partials.pasal_heading', [
-            'nomor' => $section['title'] ?? '',
-            'keterangan' => $section['keterangan'] ?? null,
-        ])
-        <div class="facility-list">
-            {!! $section['html'] !!}
+        <div class="pasal-unit">
+            @include('pdf.partials.pasal_heading', [
+                'nomor' => $section['title'] ?? '',
+                'keterangan' => $section['keterangan'] ?? null,
+            ])
+            <div class="facility-list">
+                {!! $section['html'] !!}
+            </div>
         </div>
     @endforeach
 
@@ -175,47 +197,4 @@
         </p>
     @endif
 
-    <div style="text-align: right; margin-bottom: 10px; margin-top: 20px;">
-        {{ $company->city ?? 'Palembang' }},
-        {{ $record->created_at
-            ? $record->created_at->copy()->setTimezone('Asia/Jakarta')->locale('id')->translatedFormat('d F Y')
-            : \Carbon\Carbon::now('Asia/Jakarta')->locale('id')->translatedFormat('d F Y') }}
-    </div>
-    <br>
-    <br>
-    @php
-        $ownerSignatureSrc = $company?->ownerSignatureDataUriFor(\App\Enums\SignaturePlaceholderType::DraftKontrak);
-    @endphp
-    <div class="signature-section" style="margin-top: 0;">
-        <table class="signature-table">
-            <tr>
-                <td class="signature-label" style="width: 48%;">Direktur</td>
-                <td style="width: 4%;"></td>
-                <td class="signature-label" style="width: 48%;">Calon Pengantin</td>
-            </tr>
-            <tr>
-                <td class="signature-slot">
-                    @if ($ownerSignatureSrc)
-                        <img src="{{ $ownerSignatureSrc }}" alt="Tanda tangan owner">
-                    @endif
-                </td>
-                <td></td>
-                <td class="signature-slot">&nbsp;</td>
-            </tr>
-            <tr>
-                <td class="signature-name">{{ $companyOwnerName }}</td>
-                <td></td>
-                <td class="signature-name">{{ $record->name_ttd ?? $prospect->name_cpw ?? '....................' }}</td>
-            </tr>
-            <tr>
-                <td><div class="signature-rule"></div></td>
-                <td></td>
-                <td><div class="signature-rule"></div></td>
-            </tr>
-            <tr>
-                <td class="signature-role"><b>Direktur</b></td>
-                <td></td>
-                <td class="signature-role"><b>Calon Pengantin</b></td>
-            </tr>
-        </table>
-    </div>
+    @include('pdf.partials.kontrak_signatures')

@@ -16,6 +16,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
 
 class ContractTemplateForm
@@ -91,8 +92,12 @@ class ContractTemplateForm
                     ->schema([
                         Placeholder::make('placeholder_help')
                             ->label('Placeholder')
-                            ->content($placeholderHelp)
-                            ->helperText('Tulis persis seperti ini di teks, termasuk kurung kurawal. Nilai diisi otomatis saat PDF dibuat.'),
+                            ->content(new HtmlString(
+                                '<p class="max-w-full min-w-0 break-all text-sm leading-relaxed text-gray-600 dark:text-gray-400">'.
+                                e($placeholderHelp).
+                                '</p>'
+                            ))
+                            ->helperText('Tulis persis seperti ini di teks, termasuk kurung kurawal. Nilai diisi otomatis saat PDF dibuat. Lokasi acara diisi dari Pasal 2, bukan dari paragraf ini.'),
                         Textarea::make('intro_pihak_pertama')
                             ->label('Intro pihak pertama')
                             ->rows(3)
@@ -109,6 +114,53 @@ class ContractTemplateForm
                             ->label('Kalimat penutup')
                             ->rows(2)
                             ->default($spkDefaults['closing_text']),
+                    ]),
+
+                Section::make('Tanda tangan')
+                    ->description('Tampil di akhir PDF. Nama dan kota diisi otomatis dari placeholder saat dokumen dibuat.')
+                    ->schema([
+                        TextInput::make('signature_place')
+                            ->label('Baris tempat & tanggal')
+                            ->maxLength(255)
+                            ->default($spkDefaults['signature_place'])
+                            ->helperText('Contoh: {{company_city}}, {{contract_date_short}}')
+                            ->extraAttributes(['class' => 'max-w-full min-w-0']),
+                        Repeater::make('signatures')
+                            ->label('Kolom tanda tangan')
+                            ->default($spkDefaults['signatures'])
+                            ->minItems(1)
+                            ->maxItems(3)
+                            ->reorderable()
+                            ->addActionLabel('Tambah kolom')
+                            ->schema([
+                                Grid::make(['default' => 1, 'md' => 2])
+                                    ->schema([
+                                        TextInput::make('label')
+                                            ->label('Label atas')
+                                            ->maxLength(255)
+                                            ->placeholder('Direktur')
+                                            ->helperText('Kosongkan: pakai Title TTD dari simulasi (kolom klien).'),
+                                        TextInput::make('name')
+                                            ->label('Nama di garis')
+                                            ->required()
+                                            ->maxLength(255)
+                                            ->placeholder('{{owner_name}}')
+                                            ->helperText('{{owner_name}}, {{prospect_cpw}}, atau {{name_ttd}}. Kosong → Name TTD simulasi.'),
+                                    ]),
+                                Grid::make(['default' => 1, 'md' => 2])
+                                    ->schema([
+                                        TextInput::make('role')
+                                            ->label('Jabatan di bawah garis')
+                                            ->maxLength(255)
+                                            ->placeholder('Kosongkan: Title TTD simulasi')
+                                            ->helperText('Kosongkan untuk memakai Title TTD dari simulasi pada kolom klien.'),
+                                        Toggle::make('stamp')
+                                            ->label('Stempel TTD owner')
+                                            ->helperText('Gambar tanda tangan owner di kolom ini.')
+                                            ->inline(false)
+                                            ->default(false),
+                                    ]),
+                            ]),
                     ]),
 
                 Section::make('Klausul')
