@@ -220,7 +220,7 @@
                             </p>
                             <p class="text-center text-xs text-[var(--wf-muted)]">
                                 Butuh demo?
-                                <a href="{{ route('kontak') }}" class="font-semibold text-[var(--wf-navy)] hover:text-[var(--wf-gold)]">Hubungi kami</a>
+                                <a href="{{ config('wofins.license.contact_url', 'https://wofins.id/kontak') }}" class="font-semibold text-[var(--wf-navy)] hover:text-[var(--wf-gold)]">Hubungi kami</a>
                                 ·
                                 <a href="mailto:support@wofins.id" class="font-semibold text-[var(--wf-navy)] hover:text-[var(--wf-gold)]">support@wofins.id</a>
                             </p>
