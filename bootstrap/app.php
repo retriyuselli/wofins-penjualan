@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\AdminPanelRequest;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -63,13 +64,21 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         $exceptions->render(function (Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException $e, $request) {
-            if ($request->expectsJson() || $request->is('api/*')) {
+            if ($request->expectsJson() || $request->is('api/*') || AdminPanelRequest::isLivewireRequest($request)) {
                 return response()->json([
                     'error' => 'Method Not Allowed',
                     'message' => 'The requested method is not allowed for this route.',
                     'allowed_methods' => $e->getHeaders()['Allow'] ?? 'GET, POST',
                 ], 405);
             }
+
+            if (AdminPanelRequest::matches($request)) {
+                return response()->view('errors.admin-not-found', [
+                    'title' => 'Metode tidak diizinkan',
+                    'message' => 'Permintaan ini tidak diizinkan untuk halaman admin tersebut. Anda masih masuk; silakan kembali ke dashboard.',
+                ], 405);
+            }
+
             return response()->redirectToRoute('home')->with('error', 'Method tidak diizinkan untuk halaman ini.');
         });
 
@@ -80,12 +89,20 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         $exceptions->render(function (Symfony\Component\HttpKernel\Exception\NotFoundHttpException $e, $request) {
-            if ($request->expectsJson() || $request->is('api/*')) {
+            if ($request->expectsJson() || $request->is('api/*') || AdminPanelRequest::isLivewireRequest($request)) {
                 return response()->json([
                     'error' => 'Not Found',
-                    'message' => 'The requested resource was not found.',
+                    'message' => 'Halaman tidak ditemukan.',
                 ], 404);
             }
+
+            if (AdminPanelRequest::matches($request)) {
+                return response()->view('errors.admin-not-found', [
+                    'title' => 'Halaman tidak ditemukan',
+                    'message' => 'Alamat di admin tidak valid atau datanya sudah tidak ada. Anda masih masuk; silakan kembali ke dashboard.',
+                ], 404);
+            }
+
             return response()->redirectToRoute('home')->with('error', 'Halaman tidak ditemukan.');
         });
     })->create();
