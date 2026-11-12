@@ -37,7 +37,7 @@ class OrdersTable
     {
         return $table
             ->defaultSort('updated_at', 'desc')
-            ->poll('5s')
+            ->poll('60s')
             ->modifyQueryUsing(function (Builder $query) {
                 $agreement = request()->query('agreement');
                 if ($agreement === 'missing') {

@@ -28,6 +28,8 @@ class VendorResource extends Resource
 
     protected static string|\UnitEnum|null $navigationGroup = 'Penjualan';
 
+    protected static ?int $navigationSort = 5;
+
     private static function getCachedNavigationBadgeCount(): int
     {
         $modelClass = static::getModel();
@@ -102,31 +104,11 @@ class VendorResource extends Resource
 
     public static function getModelLabel(): string
     {
-        return __('Vendor');
+        return 'Vendor';
     }
 
     public static function getPluralModelLabel(): string
     {
-        return __('Vendors');
-    }
-
-    public static function getNavigationLabel(): string
-    {
-        return __('Vendors');
-    }
-
-    protected function getRedirectUrl(): string
-    {
-        return $this->getResource()::getUrl('index');
-    }
-
-    public static function getNavigationSortOrder(): int
-    {
-        return 1;
-    }
-
-    public static function getNavigationIcon(): string
-    {
-        return 'heroicon-o-building-storefront';
+        return 'Vendor';
     }
 }

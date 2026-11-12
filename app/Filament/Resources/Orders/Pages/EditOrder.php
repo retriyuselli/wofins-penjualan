@@ -23,7 +23,7 @@ class EditOrder extends EditRecord
                 ->label('Detail')
                 ->color('success')
                 ->icon('heroicon-o-eye')
-                ->url(fn ($record) => OrderResource::getUrl('invoice', ['record' => $record->id]))
+                ->url(fn ($record) => OrderResource::getUrl('invoice', ['record' => $record]))
                 ->openUrlInNewTab(),
         ];
     }

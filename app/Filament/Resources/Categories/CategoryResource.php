@@ -28,6 +28,8 @@ class CategoryResource extends Resource
 
     protected static ?string $navigationLabel = 'Kategori';
 
+    protected static ?int $navigationSort = 6;
+
     public static function form(Schema $schema): Schema
     {
         return CategoryForm::configure($schema);

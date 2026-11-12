@@ -22,7 +22,7 @@ class Invoice extends Page
 
     public function mount(int|string $record): void
     {
-        $this->order = Order::with([
+        $relations = [
             'prospect',
             'user',
             'employee',
@@ -32,7 +32,13 @@ class Invoice extends Page
             'items.product.pengurangans',
             'dataPembayaran.paymentMethod',
             'expenses.vendor',
-        ])->findOrFail($record);
+        ];
+
+        $query = Order::with($relations);
+
+        $this->order = is_numeric($record)
+            ? $query->findOrFail($record)
+            : $query->where('slug', $record)->firstOrFail();
     }
 
     protected function getViewData(): array

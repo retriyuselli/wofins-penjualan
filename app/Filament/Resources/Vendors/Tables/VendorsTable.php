@@ -49,7 +49,7 @@ class VendorsTable
                         'productPenambahans',
                     ])
             )
-            ->poll('5s')
+            ->poll('60s')
             ->defaultPaginationPageOption(25)
             ->columns([
                 TextColumn::make('name')
@@ -817,7 +817,6 @@ class VendorsTable
             ->defaultSort('created_at', 'desc')
             ->striped()
             ->defaultPaginationPageOption(10)
-            ->paginationPageOptions([10, 25, 50])
-            ->poll('60s');
+            ->paginationPageOptions([10, 25, 50]);
     }
 }

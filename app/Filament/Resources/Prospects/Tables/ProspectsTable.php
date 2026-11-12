@@ -555,6 +555,6 @@ class ProspectsTable
                     ->icon('heroicon-o-plus')
                     ->button(),
             ])
-            ->poll('30s');
+            ->poll('60s');
     }
 }

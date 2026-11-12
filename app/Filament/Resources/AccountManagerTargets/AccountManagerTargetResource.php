@@ -32,6 +32,8 @@ class AccountManagerTargetResource extends Resource
 
     protected static ?string $navigationLabel = 'Target Manajer Akun';
 
+    protected static ?int $navigationSort = 7;
+
     protected static ?string $modelLabel = 'Target Account Manager';
 
     protected static ?string $pluralModelLabel = 'Target Account Manager';
